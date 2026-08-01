@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>四目並べ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blue-light:  #4a6bdc;
+    --blue:        #2a45b8;
+    --blue-deep:   #1a2c85;
+    --blue-darkest:#111f66;
+
+    --red-hi:      #ff9a8d;
+    --red:         #ff4733;
+    --red-deep:    #ba180b;
+
+    --gold-hi:     #ffe6a3;
+    --gold:        #ffb52b;
+    --gold-deep:   #c27602;
+
+    --cream:       rgba(255, 255, 255, 0.1);
+    --ink:         #ffffff;
+    --ink-soft:    #e3dfff;
+    --current-glow: var(--red);
+
+    color-scheme: dark;
+  }
+
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  html,body{
+    margin:0; min-height:100%;
+    font-family:'Noto Sans JP', sans-serif;
+    /* クラブのネオンとフロアをイメージした背景 */
+    background:
+      /* ディスコボールの光 */
+      radial-gradient(circle at 50% 15%, rgba(181, 73, 255, 0.6) 0%, transparent 40%),
+      /* 左の照明 */
+      radial-gradient(ellipse at 15% 10%, rgba(255, 42, 122, 0.5) 0%, transparent 50%),
+      /* 右の照明 */
+      radial-gradient(ellipse at 85% 10%, rgba(255, 42, 122, 0.5) 0%, transparent 50%),
+      /* フロアの格子模様っぽいグラデーション */
+      linear-gradient(180deg, transparent 75%, rgba(147, 33, 168, 0.3) 85%, rgba(61, 10, 89, 0.6) 100%),
+      /* 全体のベースカラー */
+      linear-gradient(180deg, #0d0121 0%, #290a4a 30%, #3a0d5c 60%, #150029 100%);
+    background-attachment: fixed;
+    color:var(--ink);
+    overflow-x:hidden;
+  }
+
+  .stage{
+    max-width:440px;
+    margin:0 auto;
+    padding:28px 18px 40px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    min-height:100dvh;
+  }
+
+  /* ---------- Title ---------- */
+  h1.title{
+    font-family:'Noto Sans JP', sans-serif;
+    font-weight:900;
+    font-size:clamp(30px, 9vw, 42px);
+    margin:0 0 4px;
+    display:flex;
+    justify-content:center;
+    letter-spacing:1px;
+    color: #ff9185;
+    text-shadow: 0 3px 6px rgba(0,0,0,0.6);
+  }
+
+  .tagline{
+    margin:0 0 18px;
+    font-size:13.5px;
+    font-weight:500;
+    color:var(--ink-soft);
+    text-align:center;
+    opacity:.9;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  /* ---------- Status pill & score ---------- */
+  .hud{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-bottom:16px;
+  }
+  .status-pill{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border:1px solid rgba(255,255,255,0.3);
+    padding:8px 16px 8px 10px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:14px;
+    color:var(--ink);
+    box-shadow:0 3px 12px rgba(0,0,0,.3), 0 0 0 0 var(--current-glow);
+    transition:box-shadow .25s ease;
+  }
+  .status-pill.win-state{
+    box-shadow:0 3px 12px rgba(0,0,0,.3), 0 0 0 3px var(--current-glow), 0 0 18px 2px var(--current-glow);
+  }
+  .status-dot{
+    width:18px; height:18px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, var(--red-hi), var(--red) 50%, var(--red-deep) 100%);
+    box-shadow:0 2px 3px rgba(0,0,0,.5);
+    transition:background .2s ease;
+    flex:none;
+  }
+  .status-dot.yellow{
+    background:radial-gradient(circle at 32% 28%, var(--gold-hi), var(--gold) 50%, var(--gold-deep) 100%);
+  }
+  .score{
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border:1px solid rgba(255,255,255,0.3);
+    box-shadow:0 3px 12px rgba(0,0,0,.3);
+    border-radius:999px;
+    padding:8px 12px;
+    white-space:nowrap;
+  }
+  .score b.sr{ color:#ff7e70; text-shadow:0 0 4px rgba(255,100,100,0.5); }
+  .score b.sy{ color:#ffd866; text-shadow:0 0 4px rgba(255,200,100,0.5); }
+
+  /* ---------- Board shell ---------- */
+  .board-shell{
+    position:relative;
+    width:100%;
+  }
+
+  .board{
+    position:relative;
+    background:
+      linear-gradient(155deg, var(--blue-light) 0%, var(--blue) 45%, var(--blue-deep) 100%);
+    border-radius:22px;
+    padding:14px 12px 10px;
+    box-shadow:
+      0 14px 0 var(--blue-darkest),
+      0 22px 30px rgba(0,0,0,.6),
+      inset 0 2px 0 rgba(255,255,255,.25);
+  }
+
+  .preview-row{
+    display:flex;
+    height:14px;
+    margin-bottom:4px;
+  }
+  .preview-slot{
+    flex:1;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+  }
+  .ghost{
+    width:70%;
+    aspect-ratio:1/1;
+    max-height:100%;
+    border-radius:50%;
+    opacity:0;
+    transform:translateY(4px) scale(.7);
+    transition:opacity .15s ease, transform .15s ease;
+    background:radial-gradient(circle at 32% 28%, var(--red-hi), var(--red) 60%);
+  }
+  .preview-slot.active .ghost{
+    opacity:.75;
+    transform:translateY(0) scale(1);
+    box-shadow: 0 0 10px var(--red);
+  }
+  .preview-slot.active .ghost.yellow{
+    background:radial-gradient(circle at 32% 28%, var(--gold-hi), var(--gold) 60%);
+    box-shadow: 0 0 10px var(--gold);
+  }
+
+  .grid{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:clamp(4px, 1.6vw, 8px);
+  }
+
+  .cell{
+    position:relative;
+    aspect-ratio:1/1;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #24316f 0%, #101a4a 65%, #0b1338 100%);
+    box-shadow:
+      inset 0 4px 7px rgba(0,0,0,.8),
+      inset 0 -2px 3px rgba(255,255,255,.1);
+  }
+
+  .piece{
+    position:absolute; inset:0;
+    border-radius:50%;
+    opacity:0;
+    transform:scale(.6);
+    transition:opacity .12s ease;
+  }
+  .piece.red{
+    opacity:1; transform:scale(1);
+    background:radial-gradient(circle at 32% 26%, var(--red-hi) 0%, var(--red) 48%, var(--red-deep) 100%);
+    box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.4), 0 2px 4px rgba(0,0,0,.5);
+  }
+  .piece.yellow{
+    opacity:1; transform:scale(1);
+    background:radial-gradient(circle at 32% 26%, var(--gold-hi) 0%, var(--gold) 48%, var(--gold-deep) 100%);
+    box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.4), 0 2px 4px rgba(0,0,0,.5);
+  }
+  .cell.win .piece{
+    animation:pulse-win 1s ease-in-out infinite;
+  }
+  @keyframes pulse-win{
+    0%,100%{ box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.4), 0 0 0 rgba(255,255,255,0); transform:scale(1); }
+    50%{ box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.6), 0 0 16px 4px rgba(255,255,255,.85); transform:scale(1.08); }
+  }
+
+  /* flying (falling) piece */
+  .flying-piece{
+    position:absolute;
+    border-radius:50%;
+    z-index:5;
+    pointer-events:none;
+  }
+  .flying-piece.red{
+    background:radial-gradient(circle at 32% 26%, var(--red-hi) 0%, var(--red) 48%, var(--red-deep) 100%);
+    box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.4), 0 4px 6px rgba(0,0,0,.5);
+  }
+  .flying-piece.yellow{
+    background:radial-gradient(circle at 32% 26%, var(--gold-hi) 0%, var(--gold) 48%, var(--gold-deep) 100%);
+    box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.4), 0 4px 6px rgba(0,0,0,.5);
+  }
+
+  /* column buttons overlay */
+  .cols-overlay{
+    position:absolute;
+    left:12px; right:12px;
+    top:18px; bottom:10px;
+    display:flex;
+  }
+  .col-btn{
+    flex:1;
+    background:transparent;
+    border:none;
+    padding:0;
+    margin:0;
+    cursor:pointer;
+    -webkit-appearance:none;
+  }
+  .col-btn:focus-visible{
+    outline:3px solid rgba(255,255,255,0.5);
+    outline-offset:-3px;
+    border-radius:14px;
+  }
+  .col-btn:disabled{ cursor:default; }
+
+  /* winning connector line */
+  .win-line-svg{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    overflow:visible;
+    pointer-events:none;
+    z-index:9;
+  }
+  #winLine{
+    fill:none;
+    stroke-linecap:round;
+    opacity:0;
+  }
+  #winLine.show{
+    opacity:1;
+    animation:line-glow-pulse 1s ease-in-out .05s 3;
+  }
+  @keyframes line-glow-pulse{
+    0%,100%{ filter:drop-shadow(0 0 3px currentColor) drop-shadow(0 0 8px currentColor); }
+    50%{ filter:drop-shadow(0 0 8px currentColor) drop-shadow(0 0 18px currentColor); }
+  }
+  .win-dot{
+    opacity:0;
+    fill:#fff;
+    stroke-width:3px;
+    transform-box:fill-box;
+    transform-origin:center;
+  }
+  .win-dot.show{
+    animation:dot-pop .45s cubic-bezier(.34,1.56,.64,1) forwards;
+  }
+  @keyframes dot-pop{
+    0%{ opacity:0; transform:scale(0); }
+    60%{ opacity:1; transform:scale(1.35); }
+    100%{ opacity:1; transform:scale(1); }
+  }
+
+  .board.shake{ animation:shake .32s ease; }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-6px); }
+    75%{ transform:translateX(6px); }
+  }
+
+  /* ---------- tray (decorative, toy-accurate) ---------- */
+  .tray-wrap{
+    position:relative;
+    display:flex;
+    justify-content:center;
+    margin-top:-4px;
+  }
+  .tray{
+    width:100%;
+    max-width:340px;
+    height:46px;
+    background:linear-gradient(180deg, var(--blue-deep), var(--blue-darkest));
+    border-radius:12px;
+    box-shadow:inset 0 6px 10px rgba(0,0,0,.7), 0 8px 12px rgba(0,0,0,.5);
+    position:relative;
+    overflow:hidden;
+  }
+  .tray .rc{
+    position:absolute;
+    width:26px; height:26px;
+    border-radius:50%;
+    bottom:6px;
+  }
+  .tray .rc.red{ background:radial-gradient(circle at 32% 28%, var(--red-hi), var(--red) 55%, var(--red-deep) 100%); }
+  .tray .rc.yellow{ background:radial-gradient(circle at 32% 28%, var(--gold-hi), var(--gold) 55%, var(--gold-deep) 100%); }
+
+  /* ---------- top-right reset icon ---------- */
+  .icon-reset-btn{
+    position:fixed;
+    top:16px; right:16px;
+    width:46px; height:46px;
+    border-radius:50%;
+    border:none;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:linear-gradient(180deg, var(--gold-hi), var(--gold) 70%);
+    box-shadow:0 4px 0 var(--gold-deep), 0 8px 16px rgba(0,0,0,.5);
+    cursor:pointer;
+    z-index:15;
+    transition:transform .08s ease, box-shadow .08s ease;
+  }
+  .icon-reset-btn:active{
+    transform:translateY(3px);
+    box-shadow:0 1px 0 var(--gold-deep), 0 3px 6px rgba(0,0,0,.4);
+  }
+  .icon-reset-btn:focus-visible{ outline:3px solid #fff; outline-offset:2px; }
+  .reset-icon{
+    width:18px; height:18px;
+    border:3px solid var(--blue-darkest);
+    border-radius:50%;
+    border-right-color:transparent;
+    position:relative;
+    transform:rotate(-45deg);
+    flex:none;
+  }
+  .reset-icon::after{
+    content:'';
+    position:absolute;
+    top:-5px; right:-3px;
+    width:0; height:0;
+    border-left:5px solid transparent;
+    border-bottom:6px solid var(--blue-darkest);
+    transform:rotate(25deg);
+  }
+
+  /* ---------- reset confirm dialog ---------- */
+  .confirm-overlay{
+    position:fixed; inset:0;
+    background:rgba(10,5,30,.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    opacity:0; pointer-events:none;
+    transition:opacity .2s ease;
+    z-index:25;
+  }
+  .confirm-overlay.show{ opacity:1; pointer-events:auto; }
+  .confirm-card{
+    background:linear-gradient(165deg, #2a164d, #140529);
+    border:2px solid #5a308c;
+    border-radius:20px;
+    padding:26px 24px;
+    text-align:center;
+    max-width:300px;
+    transform:scale(.9) translateY(8px);
+    transition:transform .2s ease;
+    box-shadow:0 20px 50px rgba(0,0,0,.6);
+  }
+  .confirm-overlay.show .confirm-card{ transform:scale(1) translateY(0); }
+  .confirm-text{
+    font-size:16.5px;
+    font-weight:700;
+    margin-bottom:20px;
+    color:#fff;
+  }
+  .confirm-actions{
+    display:flex;
+    gap:12px;
+    justify-content:center;
+  }
+  .confirm-btn{
+    font-family:'Noto Sans JP', sans-serif;
+    font-weight:800;
+    font-size:15px;
+    border:none;
+    padding:11px 24px;
+    border-radius:999px;
+    cursor:pointer;
+  }
+  .confirm-btn.yes{
+    background:linear-gradient(180deg, var(--gold-hi), var(--gold) 70%);
+    color:var(--blue-darkest);
+    box-shadow:0 4px 0 var(--gold-deep), 0 8px 12px rgba(0,0,0,.3);
+  }
+  .confirm-btn.no{
+    background:#3f226b;
+    color:#fff;
+    border:1px solid #794bb3;
+  }
+  .confirm-btn:active{ transform:translateY(3px); }
+
+  /* ---------- win overlay ---------- */
+  .win-overlay{
+    position:fixed; inset:0;
+    background:rgba(10,5,30,.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    opacity:0; pointer-events:none;
+    transition:opacity .25s ease;
+    z-index:20;
+  }
+  .win-overlay.show{ opacity:1; pointer-events:auto; }
+  .win-card{
+    background:linear-gradient(165deg, #2a164d, #140529);
+    border:2px solid var(--gold);
+    border-radius:24px;
+    padding:32px 28px;
+    text-align:center;
+    max-width:320px;
+    transform:scale(.85) translateY(10px);
+    transition:transform .25s ease;
+    box-shadow:0 20px 50px rgba(0,0,0,.6);
+  }
+  .win-overlay.show .win-card{ transform:scale(1) translateY(0); }
+  .win-emoji{ font-size:44px; margin-bottom:8px; }
+  .win-text{
+    font-family:'Noto Sans JP', sans-serif;
+    font-weight:900;
+    font-size:24px;
+    margin-bottom:22px;
+    color:#fff;
+  }
+  .win-card button{
+    font-family:'Noto Sans JP', sans-serif;
+    font-weight:800;
+    font-size:15px;
+    color:#fff;
+    background:linear-gradient(180deg, #ff4733, #ba180b);
+    border:none;
+    padding:12px 28px;
+    border-radius:999px;
+    box-shadow:0 5px 0 #730f07, 0 10px 16px rgba(0,0,0,.4);
+    cursor:pointer;
+  }
+  .win-card button:active{ transform:translateY(4px); box-shadow:0 1px 0 #730f07; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:.001s !important; transition-duration:.001s !important; }
+  }
+</style>
+</head>
+<body>
+
+<button class="icon-reset-btn" id="iconResetBtn" aria-label="リセット" title="リセット">
+  <span class="reset-icon"></span>
+</button>
+
+<div class="stage">
+  <h1 class="title" id="titleText">四目並べ</h1>
+  <p class="tagline">縦・横・斜め、先に４つ並べたら勝ち！</p>
+
+  <div class="hud">
+    <div class="status-pill" id="statusPill">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">赤の番</span>
+    </div>
+    <div class="score" id="score">赤 <b class="sr">0</b> ー 黄 <b class="sy">0</b></div>
+  </div>
+
+  <div class="board-shell">
+    <div class="board" id="board">
+      <div class="preview-row" id="previewRow"></div>
+      <div class="grid" id="grid"></div>
+      <div class="cols-overlay" id="colsOverlay"></div>
+      <svg class="win-line-svg" id="winLineSvg">
+        <line id="winLine" x1="0" y1="0" x2="0" y2="0"></line>
+        <circle id="winDotStart" class="win-dot" cx="0" cy="0" r="0"></circle>
+        <circle id="winDotEnd" class="win-dot" cx="0" cy="0" r="0"></circle>
+      </svg>
+    </div>
+  </div>
+
+  <div class="tray-wrap">
+    <div class="tray" id="tray"></div>
+  </div>
+</div>
+
+<div class="win-overlay" id="winOverlay">
+  <div class="win-card">
+    <div class="win-emoji" id="winEmoji">🎉</div>
+    <div class="win-text" id="winText">赤の勝ち！</div>
+    <button id="playAgainBtn">つづける</button>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-card">
+    <div class="confirm-text">本当にリセットしますか？</div>
+    <div class="confirm-actions">
+      <button id="confirmNo" class="confirm-btn no">いいえ</button>
+      <button id="confirmYes" class="confirm-btn yes">はい</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ROWS = 6, COLS = 7;
+  const board = Array.from({length:ROWS}, () => Array(COLS).fill(null)); // 'red' | 'yellow' | null
+  let current = 'red';
+  let locked = false;
+  let gameOver = false;
+  let winOverlayTimer = null;
+  const score = { red:0, yellow:0 };
+
+  // ---------- Build grid ----------
+  const gridEl = document.getElementById('grid');
+  const previewRowEl = document.getElementById('previewRow');
+  const colsOverlayEl = document.getElementById('colsOverlay');
+  const boardEl = document.getElementById('board');
+
+  const cellEls = [];   // cellEls[row][col] -> .cell
+  const pieceEls = [];  // pieceEls[row][col] -> .piece
+
+  for(let r=0; r<ROWS; r++){
+    cellEls.push([]);
+    pieceEls.push([]);
+    for(let c=0; c<COLS; c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const piece = document.createElement('div');
+      piece.className = 'piece';
+      cell.appendChild(piece);
+      gridEl.appendChild(cell);
+      cellEls[r].push(cell);
+      pieceEls[r].push(piece);
+    }
+  }
+
+  const previewSlots = [];
+  for(let c=0; c<COLS; c++){
+    const slot = document.createElement('div');
+    slot.className = 'preview-slot';
+    const ghost = document.createElement('div');
+    ghost.className = 'ghost';
+    slot.appendChild(ghost);
+    previewRowEl.appendChild(slot);
+    previewSlots.push(slot);
+  }
+
+  const colButtons = [];
+  for(let c=0; c<COLS; c++){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'col-btn';
+    btn.setAttribute('aria-label', (c+1) + '列目に置く');
+    btn.addEventListener('mouseenter', () => showGhost(c));
+    btn.addEventListener('mouseleave', () => hideGhost(c));
+    btn.addEventListener('focus', () => showGhost(c));
+    btn.addEventListener('blur', () => hideGhost(c));
+    btn.addEventListener('click', () => attemptDrop(c));
+    colsOverlayEl.appendChild(btn);
+    colButtons.push(btn);
+  }
+
+  function showGhost(c){
+    if(gameOver || locked) return;
+    const slot = previewSlots[c];
+    slot.classList.add('active');
+    const ghost = slot.querySelector('.ghost');
+    ghost.classList.toggle('yellow', current === 'yellow');
+  }
+  function hideGhost(c){
+    previewSlots[c].classList.remove('active');
+  }
+
+  // ---------- Decorative reserve tray ----------
+  const trayEl = document.getElementById('tray');
+  const trayChips = [
+    {c:'yellow', x:10,  y:4,  r:-8},
+    {c:'red',    x:34,  y:10, r:6},
+    {c:'yellow', x:58,  y:2,  r:-4},
+    {c:'yellow', x:82,  y:12, r:10},
+    {c:'red',    x:106, y:5,  r:-10},
+    {c:'red',    x:130, y:11, r:5},
+    {c:'yellow', x:154, y:3,  r:-6},
+    {c:'red',    x:178, y:9,  r:8},
+  ];
+  trayChips.forEach(chip => {
+    const el = document.createElement('div');
+    el.className = 'rc ' + chip.c;
+    el.style.left = chip.x + 'px';
+    el.style.transform = `rotate(${chip.r}deg)`;
+    el.style.marginBottom = chip.y + 'px';
+    trayEl.appendChild(el);
+  });
+
+  // ---------- Status / score ----------
+  const statusPill = document.getElementById('statusPill');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const scoreEl = document.getElementById('score');
+
+  function updateStatus(){
+    statusDot.classList.toggle('yellow', current === 'yellow');
+    statusText.textContent = current === 'red' ? '赤の番' : '黄の番';
+    statusPill.style.setProperty('--current-glow', current === 'red' ? 'var(--red)' : 'var(--gold)');
+  }
+  function updateScore(){
+    scoreEl.innerHTML = `赤 <b class="sr">${score.red}</b> ー 黄 <b class="sy">${score.yellow}</b>`;
+  }
+  updateStatus();
+
+  // ---------- Drop logic ----------
+  function lowestEmptyRow(col){
+    for(let r = ROWS - 1; r >= 0; r--){
+      if(board[r][col] === null) return r;
+    }
+    return -1;
+  }
+
+  function attemptDrop(col){
+    if(gameOver || locked) return;
+    const row = lowestEmptyRow(col);
+    if(row === -1){
+      boardEl.classList.remove('shake');
+      void boardEl.offsetWidth;
+      boardEl.classList.add('shake');
+      return;
+    }
+    hideGhost(col);
+    dropPiece(row, col);
+  }
+
+  function dropPiece(row, col){
+    locked = true;
+    const player = current;
+    board[row][col] = player;
+
+    const boardRect = boardEl.getBoundingClientRect();
+    const slotRect = previewSlots[col].getBoundingClientRect();
+    const targetRect = cellEls[row][col].getBoundingClientRect();
+
+    const size = targetRect.width;
+    const startTop = slotRect.top - boardRect.top;
+    const endTop = targetRect.top - boardRect.top;
+    const left = targetRect.left - boardRect.left;
+
+    const flyer = document.createElement('div');
+    flyer.className = 'flying-piece ' + player;
+    flyer.style.width = size + 'px';
+    flyer.style.height = size + 'px';
+    flyer.style.left = left + 'px';
+    flyer.style.top = startTop + 'px';
+    boardEl.appendChild(flyer);
+
+    const distance = endTop - startTop;
+    const duration = Math.min(800, Math.max(450, distance * 1.3)); // アニメーション時間を少し延長
+
+    // バウンドの高さを大幅に増加（ボールの半分の高さ）
+    const bounceHeight = size * 0.55; 
+
+    // より物理的（重力）に近いeasing（cubic-bezier）を設定
+    const anim = flyer.animate([
+      { transform: 'translateY(0)', offset: 0, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' }, // 落下（加速）
+      { transform: `translateY(${distance}px)`, offset: 0.55, easing: 'cubic-bezier(0, 0, 0.2, 1)' }, // 1回目の着地 -> 上昇（減速）
+      { transform: `translateY(${distance - bounceHeight}px)`, offset: 0.72, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' }, // バウンド頂点 -> 落下（加速）
+      { transform: `translateY(${distance}px)`, offset: 0.86, easing: 'cubic-bezier(0, 0, 0.2, 1)' }, // 2回目の着地 -> 上昇（減速）
+      { transform: `translateY(${distance - bounceHeight * 0.25}px)`, offset: 0.94, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' }, // 小バウンド頂点 -> 落下
+      { transform: `translateY(${distance}px)`, offset: 1 } // 最終着地
+    ], { duration, fill:'forwards' });
+
+    anim.onfinish = () => {
+      flyer.remove();
+      const pieceEl = pieceEls[row][col];
+      pieceEl.classList.add(player);
+      finishTurn(row, col, player);
+    };
+  }
+
+  // ---------- Win detection ----------
+  const DIRECTIONS = [ [0,1], [1,0], [1,1], [1,-1] ];
+
+  function checkWin(row, col, player){
+    for(const [dr, dc] of DIRECTIONS){
+      const line = [[row,col]];
+      let r = row + dr, c = col + dc;
+      while(r>=0 && r<ROWS && c>=0 && c<COLS && board[r][c] === player){
+        line.push([r,c]); r += dr; c += dc;
+      }
+      r = row - dr; c = col - dc;
+      while(r>=0 && r<ROWS && c>=0 && c<COLS && board[r][c] === player){
+        line.push([r,c]); r -= dr; c -= dc;
+      }
+      if(line.length >= 4) return line;
+    }
+    return null;
+  }
+
+  function boardFull(){
+    return board.every(row => row.every(cell => cell !== null));
+  }
+
+  // ---------- Win line appeal (draws a glowing connector across the 4 winning pieces) ----------
+  const winLineEl = document.getElementById('winLine');
+  const winDotStart = document.getElementById('winDotStart');
+  const winDotEnd = document.getElementById('winDotEnd');
+
+  function cellCenter(row, col){
+    const rect = cellEls[row][col].getBoundingClientRect();
+    const boardRect = boardEl.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2 - boardRect.left,
+      y: rect.top + rect.height / 2 - boardRect.top
+    };
+  }
+
+  function drawWinLine(line, player){
+    const [r1, c1] = line[0];
+    const [r2, c2] = line[line.length - 1];
+    const p1 = cellCenter(r1, c1);
+    const p2 = cellCenter(r2, c2);
+    const color = player === 'red' ? '#ff5a4d' : '#ffd24d';
+    const length = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+
+    winLineEl.setAttribute('x1', p1.x);
+    winLineEl.setAttribute('y1', p1.y);
+    winLineEl.setAttribute('x2', p2.x);
+    winLineEl.setAttribute('y2', p2.y);
+    winLineEl.style.stroke = color;
+    winLineEl.style.color = color;
+    winLineEl.style.strokeWidth = '9';
+    winLineEl.style.strokeDasharray = length;
+    winLineEl.style.strokeDashoffset = length;
+    winLineEl.style.opacity = '1';
+
+    winDotStart.setAttribute('cx', p1.x);
+    winDotStart.setAttribute('cy', p1.y);
+    winDotStart.setAttribute('r', 8);
+    winDotStart.style.stroke = color;
+    winDotEnd.setAttribute('cx', p2.x);
+    winDotEnd.setAttribute('cy', p2.y);
+    winDotEnd.setAttribute('r', 8);
+    winDotEnd.style.stroke = color;
+
+    requestAnimationFrame(() => {
+      const anim = winLineEl.animate(
+        [{ strokeDashoffset: length }, { strokeDashoffset: 0 }],
+        { duration: 480, easing: 'ease-out', fill: 'forwards' }
+      );
+      anim.onfinish = () => {
+        winLineEl.classList.add('show');
+        winDotStart.classList.add('show');
+        winDotEnd.classList.add('show');
+      };
+    });
+  }
+
+  function resetWinLine(){
+    winLineEl.classList.remove('show');
+    winLineEl.style.opacity = '0';
+    winDotStart.classList.remove('show');
+    winDotEnd.classList.remove('show');
+  }
+
+  function finishTurn(row, col, player){
+    const winLine = checkWin(row, col, player);
+    if(winLine){
+      gameOver = true;
+      winLine.forEach(([r,c]) => cellEls[r][c].classList.add('win'));
+      statusPill.classList.add('win-state');
+      score[player]++;
+      updateScore();
+      drawWinLine(winLine, player);
+      locked = false;
+      winOverlayTimer = setTimeout(() => showWinOverlay(player), 800);
+      return;
+    }
+    if(boardFull()){
+      gameOver = true;
+      showWinOverlay(null);
+      locked = false;
+      return;
+    }
+    current = current === 'red' ? 'yellow' : 'red';
+    updateStatus();
+    locked = false;
+  }
+
+  // ---------- Win overlay ----------
+  const winOverlay = document.getElementById('winOverlay');
+  const winEmoji = document.getElementById('winEmoji');
+  const winText = document.getElementById('winText');
+  const playAgainBtn = document.getElementById('playAgainBtn');
+  const confirmOverlay = document.getElementById('confirmOverlay');
+
+  function showWinOverlay(player){
+    if(player === null){
+      winEmoji.textContent = '🤝';
+      winText.textContent = '引き分け！';
+    } else if(player === 'red'){
+      winEmoji.textContent = '🔴🎉';
+      winText.textContent = '赤の勝ち！';
+    } else {
+      winEmoji.textContent = '🟡🎉';
+      winText.textContent = '黄の勝ち！';
+    }
+    winOverlay.classList.add('show');
+  }
+  function hideWinOverlay(){
+    winOverlay.classList.remove('show');
+  }
+
+  // ---------- Reset ----------
+  function resetGame(){
+    if(winOverlayTimer){ clearTimeout(winOverlayTimer); winOverlayTimer = null; }
+    for(let r=0; r<ROWS; r++){
+      for(let c=0; c<COLS; c++){
+        board[r][c] = null;
+        pieceEls[r][c].className = 'piece';
+        cellEls[r][c].classList.remove('win');
+      }
+    }
+    current = 'red';
+    gameOver = false;
+    locked = false;
+    statusPill.classList.remove('win-state');
+    updateStatus();
+    hideWinOverlay();
+    resetWinLine();
+  }
+
+  document.getElementById('confirmYes').addEventListener('click', () => {
+    confirmOverlay.classList.remove('show');
+    resetGame();
+  });
+  document.getElementById('confirmNo').addEventListener('click', () => {
+    confirmOverlay.classList.remove('show');
+  });
+  document.getElementById('iconResetBtn').addEventListener('click', () => {
+    confirmOverlay.classList.add('show');
+  });
+  playAgainBtn.addEventListener('click', resetGame);
+
+})();
+</script>
+</body>
+</html>
