@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8"> 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>四目並べ</title>
+<title>悪魔の四目並べ 〜思考を蝕む四目の呪い〜</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -69,10 +69,20 @@
     font-size:clamp(30px, 9vw, 42px);
     margin:0 0 4px;
     display:flex;
+    flex-direction:column;
+    align-items:center;
     justify-content:center;
     letter-spacing:1px;
     color: #ff9185;
     text-shadow: 0 3px 6px rgba(0,0,0,0.6);
+  }
+
+  h1.title .title-sub{
+    font-size:0.38em;
+    font-weight:700;
+    letter-spacing:0.5px;
+    color: #ffb3aa;
+    margin-top:2px;
   }
 
   .tagline{
@@ -93,6 +103,53 @@
     justify-content:center;
     gap:10px;
     margin-bottom:16px;
+  }
+  .starter-picker{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border:1px solid rgba(255,255,255,0.3);
+    border-radius:999px;
+    padding:6px 8px 6px 14px;
+    box-shadow:0 3px 12px rgba(0,0,0,.3);
+  }
+  .starter-label{
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .starter-btn{
+    border:none;
+    border-radius:999px;
+    padding:5px 12px;
+    font-size:12.5px;
+    font-weight:800;
+    font-family:'Noto Sans JP', sans-serif;
+    cursor:pointer;
+    color:rgba(255,255,255,0.6);
+    background:rgba(255,255,255,0.08);
+    transition:background .15s ease, color .15s ease, transform .08s ease, box-shadow .15s ease;
+  }
+  .starter-btn:active{ transform:translateY(1px); }
+  .starter-btn:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+  .starter-btn:disabled{
+    cursor:not-allowed;
+    opacity:.45;
+  }
+  .starter-btn:disabled.active{ opacity:.7; }
+  .starter-btn.red.active{
+    background:linear-gradient(180deg, var(--red-hi), var(--red) 70%);
+    color:#3a0300;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  .starter-btn.yellow.active{
+    background:linear-gradient(180deg, var(--gold-hi), var(--gold) 70%);
+    color:#3a2600;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
   }
   .status-pill{
     display:flex;
@@ -138,6 +195,48 @@
   }
   .score b.sr{ color:#ff7e70; text-shadow:0 0 4px rgba(255,100,100,0.5); }
   .score b.sy{ color:#ffd866; text-shadow:0 0 4px rgba(255,200,100,0.5); }
+
+  .score-wrap{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .score-reset-btn{
+    width:26px; height:26px;
+    border-radius:50%;
+    border:1px solid rgba(255,255,255,0.3);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow:0 3px 8px rgba(0,0,0,.3);
+    cursor:pointer;
+    flex:none;
+    padding:0;
+    transition:transform .08s ease;
+  }
+  .score-reset-btn:active{ transform:translateY(2px) scale(.92); }
+  .score-reset-btn:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+  .score-reset-icon{
+    width:10px; height:10px;
+    border:2px solid var(--ink);
+    border-radius:50%;
+    border-right-color:transparent;
+    position:relative;
+    transform:rotate(-45deg);
+    flex:none;
+  }
+  .score-reset-icon::after{
+    content:'';
+    position:absolute;
+    top:-3.5px; right:-2px;
+    width:0; height:0;
+    border-left:3.5px solid transparent;
+    border-bottom:4px solid var(--ink);
+    transform:rotate(25deg);
+  }
 
   /* ---------- Board shell ---------- */
   .board-shell{
@@ -210,7 +309,6 @@
     border-radius:50%;
     opacity:0;
     transform:scale(.6);
-    transition:opacity .12s ease;
   }
   .piece.red{
     opacity:1; transform:scale(1);
@@ -495,15 +593,25 @@
 </button>
 
 <div class="stage">
-  <h1 class="title" id="titleText">四目並べ</h1>
+  <h1 class="title" id="titleText">悪魔の四目並べ<span class="title-sub">〜思考を蝕む四目の呪い〜</span></h1>
   <p class="tagline">縦・横・斜め、先に４つ並べたら勝ち！</p>
 
   <div class="hud">
+    <div class="starter-picker" id="starterPicker">
+      <span class="starter-label">先行</span>
+      <button class="starter-btn red active" id="starterRedBtn" data-color="red" aria-pressed="true">赤</button>
+      <button class="starter-btn yellow" id="starterYellowBtn" data-color="yellow" aria-pressed="false">黄</button>
+    </div>
+    <div class="score-wrap">
+      <div class="score" id="score">赤 <b class="sr">0</b> ー 黄 <b class="sy">0</b></div>
+      <button class="score-reset-btn" id="scoreResetBtn" aria-label="戦績をリセット" title="戦績をリセット">
+        <span class="score-reset-icon"></span>
+      </button>
+    </div>
     <div class="status-pill" id="statusPill">
       <span class="status-dot" id="statusDot"></span>
       <span id="statusText">赤の番</span>
     </div>
-    <div class="score" id="score">赤 <b class="sr">0</b> ー 黄 <b class="sy">0</b></div>
   </div>
 
   <div class="board-shell">
@@ -534,7 +642,7 @@
 
 <div class="confirm-overlay" id="confirmOverlay">
   <div class="confirm-card">
-    <div class="confirm-text">本当にリセットしますか？</div>
+    <div class="confirm-text" id="confirmText">盤面をリセットしますか？</div>
     <div class="confirm-actions">
       <button id="confirmNo" class="confirm-btn no">いいえ</button>
       <button id="confirmYes" class="confirm-btn yes">はい</button>
@@ -547,6 +655,8 @@
   const ROWS = 6, COLS = 7;
   const board = Array.from({length:ROWS}, () => Array(COLS).fill(null)); // 'red' | 'yellow' | null
   let current = 'red';
+  let nextStarter = 'red';
+  let roundStarted = false;
   let locked = false;
   let gameOver = false;
   let winOverlayTimer = null;
@@ -672,6 +782,10 @@
   }
 
   function dropPiece(row, col){
+    if(!roundStarted){
+      roundStarted = true;
+      setStarterPickerEnabled(false);
+    }
     locked = true;
     const player = current;
     board[row][col] = player;
@@ -811,6 +925,8 @@
       score[player]++;
       updateScore();
       drawWinLine(winLine, player);
+      roundStarted = false;
+      setStarterPickerEnabled(true);
       locked = false;
       winOverlayTimer = setTimeout(() => showWinOverlay(player), 800);
       return;
@@ -818,6 +934,8 @@
     if(boardFull()){
       gameOver = true;
       showWinOverlay(null);
+      roundStarted = false;
+      setStarterPickerEnabled(true);
       locked = false;
       return;
     }
@@ -860,24 +978,69 @@
         cellEls[r][c].classList.remove('win');
       }
     }
-    current = 'red';
+    current = nextStarter;
     gameOver = false;
     locked = false;
+    roundStarted = false;
+    setStarterPickerEnabled(true);
     statusPill.classList.remove('win-state');
     updateStatus();
     hideWinOverlay();
     resetWinLine();
   }
 
+  function resetScore(){
+    score.red = 0;
+    score.yellow = 0;
+    updateScore();
+  }
+
+  const confirmText = document.getElementById('confirmText');
+  const scoreResetBtn = document.getElementById('scoreResetBtn');
+  const starterRedBtn = document.getElementById('starterRedBtn');
+  const starterYellowBtn = document.getElementById('starterYellowBtn');
+  let pendingAction = 'board';
+
+  function setNextStarter(color){
+    nextStarter = color;
+    starterRedBtn.classList.toggle('active', color === 'red');
+    starterYellowBtn.classList.toggle('active', color === 'yellow');
+    starterRedBtn.setAttribute('aria-pressed', color === 'red' ? 'true' : 'false');
+    starterYellowBtn.setAttribute('aria-pressed', color === 'yellow' ? 'true' : 'false');
+    current = color;
+    updateStatus();
+  }
+
+  starterRedBtn.addEventListener('click', () => setNextStarter('red'));
+  starterYellowBtn.addEventListener('click', () => setNextStarter('yellow'));
+
+  function setStarterPickerEnabled(enabled){
+    starterRedBtn.disabled = !enabled;
+    starterYellowBtn.disabled = !enabled;
+  }
+
+  function openConfirm(action, text){
+    pendingAction = action;
+    confirmText.textContent = text;
+    confirmOverlay.classList.add('show');
+  }
+
   document.getElementById('confirmYes').addEventListener('click', () => {
     confirmOverlay.classList.remove('show');
-    resetGame();
+    if(pendingAction === 'score'){
+      resetScore();
+    } else {
+      resetGame();
+    }
   });
   document.getElementById('confirmNo').addEventListener('click', () => {
     confirmOverlay.classList.remove('show');
   });
   document.getElementById('iconResetBtn').addEventListener('click', () => {
-    confirmOverlay.classList.add('show');
+    openConfirm('board', '盤面をリセットしますか？');
+  });
+  scoreResetBtn.addEventListener('click', () => {
+    openConfirm('score', '戦績をリセットしますか？');
   });
   playAgainBtn.addEventListener('click', resetGame);
 
