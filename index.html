@@ -4,7 +4,6 @@
 <meta charset="UTF-8"> 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>悪魔の四目並べ 〜思考を蝕む四目の呪い〜</title>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;800;900&display=swap" rel="stylesheet">
@@ -154,93 +153,6 @@
     background:linear-gradient(180deg, #86efac, #22c55e 70%);
     color:#052e16;
   }
-
-
-  /* ---------- Online panel ---------- */
-  .online-panel{
-    width:100%;
-    max-width:420px;
-    margin:0 0 12px;
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    align-items:center;
-  }
-  .online-row{
-    display:flex;
-    flex-wrap:wrap;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-  }
-  .online-action-btn{
-    border:none;
-    border-radius:999px;
-    padding:8px 14px;
-    font-size:13px;
-    font-weight:800;
-    font-family:'Noto Sans JP', sans-serif;
-    cursor:pointer;
-    color:#1a0533;
-    background:linear-gradient(180deg, #c084fc, #9333ea 70%);
-    box-shadow:0 2px 6px rgba(0,0,0,.35);
-  }
-  .online-action-btn.subtle{
-    background:rgba(255,255,255,0.15);
-    color:#fff;
-    border:1px solid rgba(255,255,255,0.3);
-    box-shadow:none;
-  }
-  .online-action-btn:disabled{
-    opacity:.45;
-    cursor:not-allowed;
-  }
-  .online-input{
-    border-radius:999px;
-    border:1px solid rgba(255,255,255,0.35);
-    background:rgba(0,0,0,0.25);
-    color:#fff;
-    font-size:13px;
-    font-weight:700;
-    font-family:'Noto Sans JP', sans-serif;
-    padding:8px 12px;
-    text-align:center;
-  }
-  .online-input-code{
-    width:128px;
-    letter-spacing:1.5px;
-    text-transform:uppercase;
-  }
-  .online-input-pass{
-    width:120px;
-    letter-spacing:0;
-    text-transform:none;
-    font-weight:600;
-  }
-  .online-input::placeholder{ letter-spacing:0; color:rgba(255,255,255,0.4); font-weight:500; text-transform:none; }
-  .online-or{
-    font-size:12px;
-    font-weight:700;
-    color:var(--ink-soft);
-  }
-  .online-status-text{
-    font-size:13.5px;
-    font-weight:700;
-    color:#fff;
-    background:rgba(255,255,255,0.12);
-    border:1px solid rgba(255,255,255,0.25);
-    border-radius:999px;
-    padding:8px 14px;
-  }
-  .online-status-text b{ color:#ffd866; letter-spacing:2px; }
-  .online-hint{
-    font-size:11.5px;
-    color:var(--ink-soft);
-    text-align:center;
-    opacity:.85;
-  }
-  .online-hint.warn{ color:#ff9a8d; opacity:1; }
-  .online-hint.ok{ color:#86efac; opacity:1; }
 
   /* ---------- Status pill & score ---------- */
   .hud{
@@ -749,33 +661,12 @@
       <span class="mode-label">モード</span>
       <button class="mode-btn active" id="modePvpBtn" data-mode="pvp">対人</button>
       <button class="mode-btn" id="modeCpuBtn" data-mode="cpu">CPU</button>
-      <button class="mode-btn" id="modeOnlineBtn" data-mode="online">友達</button>
     </div>
     <div class="mode-picker" id="firstPicker" style="display:none;">
       <span class="mode-label">先攻</span>
       <button class="mode-btn active" id="firstHumanBtn" data-first="human" aria-pressed="true">自分</button>
       <button class="mode-btn" id="firstCpuBtn" data-first="cpu" aria-pressed="false">CPU</button>
     </div>
-  </div>
-
-  <div class="online-panel" id="onlinePanel" style="display:none;">
-    <div id="onlineLobby">
-      <div class="online-row">
-        <input type="text" id="hostPassInput" class="online-input online-input-pass" maxlength="16" placeholder="合言葉（作成時）" autocomplete="off">
-        <button type="button" class="online-action-btn" id="createRoomBtn">部屋を作る</button>
-      </div>
-      <div class="online-row">
-        <input type="text" id="joinCodeInput" class="online-input online-input-code" maxlength="10" placeholder="部屋コード" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        <input type="text" id="joinPassInput" class="online-input online-input-pass" maxlength="16" placeholder="合言葉" autocomplete="off">
-        <button type="button" class="online-action-btn" id="joinRoomBtn">入室</button>
-      </div>
-    </div>
-    <div class="online-row" id="onlineWaiting" style="display:none;">
-      <span class="online-status-text" id="onlineStatusText">部屋: <b id="roomCodeDisplay">----------</b></span>
-      <button type="button" class="online-action-btn subtle" id="copyRoomBtn">コピー</button>
-      <button type="button" class="online-action-btn subtle" id="leaveRoomBtn">退出</button>
-    </div>
-    <div class="online-hint" id="onlineHint">部屋コードと合言葉を友達だけに共有してください（無料・登録不要）</div>
   </div>
 
   <div class="hud">
@@ -856,23 +747,11 @@
   const score = { red:0, yellow:0 };
 
   // Mode / SFX
-  let gameMode = 'pvp'; // 'pvp' | 'cpu' | 'online'
+  let gameMode = 'pvp'; // 'pvp' | 'cpu'
   let sfxEnabled = true;
   let humanColor = 'red'; // color the human plays in CPU mode
   let cpuFirst = false;  // if true, CPU moves first in CPU mode
   let audioCtx = null;
-
-  // Online (PeerJS P2P — free, no server cost)
-  let onlinePeer = null;
-  let onlineConn = null;
-  let onlineIsHost = false;
-  let onlineMyColor = 'red'; // host=red, guest=yellow
-  let onlineConnected = false;
-  let onlineRoomCode = '';
-  let onlinePassphrase = '';
-  let onlineAuthed = false;
-  let onlineApplyingRemote = false; // prevent echo when applying peer move
-
 
   // ---------- Build grid ----------
   const gridEl = document.getElementById('grid');
@@ -927,7 +806,6 @@
   function showGhost(c){
     if(gameOver || locked) return;
     if(gameMode === 'cpu' && current !== humanColor) return;
-    if(gameMode === 'online' && (!onlineConnected || current !== onlineMyColor)) return;
     const slot = previewSlots[c];
     slot.classList.add('active');
     const ghost = slot.querySelector('.ghost');
@@ -974,13 +852,6 @@
         statusPill.classList.add('cpu-thinking');
       } else {
         statusText.textContent = 'CPUの番';
-      }
-    } else if(gameMode === 'online' && onlineConnected && !gameOver){
-      if(current === onlineMyColor){
-        statusText.textContent = 'あなたの番';
-      } else {
-        statusText.textContent = '相手の番';
-        statusPill.classList.add('cpu-thinking');
       }
     } else {
       statusText.textContent = current === 'red' ? '赤の番' : '黄の番';
@@ -1084,14 +955,6 @@
       }
       return;
     }
-    // Online: only drop on your turn, and only when connected
-    if(gameMode === 'online'){
-      if(!onlineConnected){
-        setOnlineHint('先に部屋を作成するか入室してください', 'warn');
-        return;
-      }
-      if(current !== onlineMyColor) return;
-    }
     const row = lowestEmptyRow(col);
     if(row === -1){
       boardEl.classList.remove('shake');
@@ -1114,11 +977,6 @@
     locked = true;
     const player = current;
     board[row][col] = player;
-
-    // Broadcast move to friend (only local-originated moves)
-    if(gameMode === 'online' && onlineConnected && !onlineApplyingRemote){
-      sendOnline({ t: 'drop', c: col, p: player });
-    }
 
     playDropSound();
     vibrate(25);
@@ -1627,15 +1485,11 @@
     } else if(player === 'red'){
       winEmoji.textContent = '🔴🎉';
       winText.textContent = gameMode === 'cpu' && humanColor === 'red' ? 'あなたの勝ち！' :
-                            gameMode === 'cpu' ? 'CPUの勝ち…' :
-                            gameMode === 'online' && onlineMyColor === 'red' ? 'あなたの勝ち！' :
-                            gameMode === 'online' ? '相手の勝ち…' : '赤の勝ち！';
+                            gameMode === 'cpu' ? 'CPUの勝ち…' : '赤の勝ち！';
     } else {
       winEmoji.textContent = '🟡🎉';
       winText.textContent = gameMode === 'cpu' && humanColor === 'yellow' ? 'あなたの勝ち！' :
-                            gameMode === 'cpu' ? 'CPUの勝ち…' :
-                            gameMode === 'online' && onlineMyColor === 'yellow' ? 'あなたの勝ち！' :
-                            gameMode === 'online' ? '相手の勝ち…' : '黄の勝ち！';
+                            gameMode === 'cpu' ? 'CPUの勝ち…' : '黄の勝ち！';
     }
     winOverlay.classList.add('show');
   }
@@ -1771,17 +1625,6 @@
     if(winOverlayTimer){ clearTimeout(winOverlayTimer); winOverlayTimer = null; }
     hideCpuStartDialog();
     softClearBoard();
-    if(gameMode === 'online'){
-      current = 'red';
-      nextStarter = 'red';
-      setStarterPickerEnabled(false);
-      setModePickerEnabled(true);
-      updateStatus();
-      if(onlineConnected && !onlineApplyingRemote){
-        sendOnline({ t: 'reset' });
-      }
-      return;
-    }
     computeNextStarter();
     current = nextStarter;
     setStarterPickerEnabled(true);
@@ -1848,321 +1691,30 @@
   function setModePickerEnabled(enabled){
     document.getElementById('modePvpBtn').disabled = !enabled;
     document.getElementById('modeCpuBtn').disabled = !enabled;
-    document.getElementById('modeOnlineBtn').disabled = !enabled;
   }
 
   // Mode buttons
   document.getElementById('modePvpBtn').addEventListener('click', () => {
     if(roundStarted) return;
     hideCpuStartDialog();
-    destroyOnline();
-    showOnlineUI(false);
     softClearBoard();
     gameMode = 'pvp';
     document.getElementById('modePvpBtn').classList.add('active');
     document.getElementById('modeCpuBtn').classList.remove('active');
-    document.getElementById('modeOnlineBtn').classList.remove('active');
     nextStarter = humanColor;
     syncStarterUI();
     applyStarterToCurrent();
-    setStarterPickerEnabled(true);
   });
   document.getElementById('modeCpuBtn').addEventListener('click', () => {
     if(roundStarted) return;
-    destroyOnline();
-    showOnlineUI(false);
     softClearBoard();
     gameMode = 'cpu';
     document.getElementById('modeCpuBtn').classList.add('active');
     document.getElementById('modePvpBtn').classList.remove('active');
-    document.getElementById('modeOnlineBtn').classList.remove('active');
     syncStarterUI();
     applyStarterToCurrent();
-    setStarterPickerEnabled(true);
     if(cpuFirst) showCpuStartDialog();
   });
-
-
-  // ---------- Online friends (PeerJS) ----------
-  function setOnlineHint(msg, kind){
-    const el = document.getElementById('onlineHint');
-    if(!el) return;
-    el.textContent = msg;
-    el.classList.remove('warn', 'ok');
-    if(kind) el.classList.add(kind);
-  }
-
-  function genRoomCode(){
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let s = '';
-    for(let i=0; i<10; i++) s += chars[Math.floor(Math.random() * chars.length)];
-    return s;
-  }
-
-  function normalizePass(s){
-    return String(s || '').trim();
-  }
-
-
-  function sendOnline(obj){
-    if(onlineConn && onlineConn.open){
-      try { onlineConn.send(obj); } catch(e){}
-    }
-  }
-
-  function destroyOnline(){
-    onlineConnected = false;
-    try { if(onlineConn) onlineConn.close(); } catch(e){}
-    try { if(onlinePeer) onlinePeer.destroy(); } catch(e){}
-    onlineConn = null;
-    onlinePeer = null;
-    onlineRoomCode = '';
-    onlinePassphrase = '';
-    onlineAuthed = false;
-    onlineIsHost = false;
-    document.getElementById('onlineLobby').style.display = '';
-    document.getElementById('onlineWaiting').style.display = 'none';
-    document.getElementById('roomCodeDisplay').textContent = '----------';
-  }
-
-  function onOnlineReady(){
-    onlineConnected = true;
-    onlineAuthed = true;
-    document.getElementById('onlineStatusText').innerHTML =
-      '接続中 <b>' + onlineRoomCode + '</b> — あなたは' + (onlineMyColor === 'red' ? '赤（先行）' : '黄（後攻）');
-    setOnlineHint(
-      onlineIsHost
-        ? '接続しました！あなたは赤（先行）です'
-        : '接続しました！あなたは黄（後攻）です',
-      'ok'
-    );
-    softClearBoard();
-    current = 'red';
-    nextStarter = 'red';
-    updateStatus();
-  }
-
-  function wireConnection(conn){
-    onlineConn = conn;
-    onlineAuthed = false;
-    conn.on('open', () => {
-      if(onlineIsHost){
-        // wait for guest auth
-        setOnlineHint('相手を確認しています…', null);
-      } else {
-        // guest sends passphrase
-        try {
-          conn.send({ t: 'auth', key: onlinePassphrase });
-        } catch(e){}
-        setOnlineHint('合言葉を確認しています…', null);
-      }
-    });
-    conn.on('data', (data) => {
-      if(!data || typeof data !== 'object') return;
-
-      // --- auth handshake ---
-      if(data.t === 'auth'){
-        if(!onlineIsHost) return;
-        const key = normalizePass(data.key);
-        if(key && key === onlinePassphrase){
-          try { conn.send({ t: 'authok' }); } catch(e){}
-          onOnlineReady();
-        } else {
-          try { conn.send({ t: 'authfail' }); } catch(e){}
-          setOnlineHint('合言葉が違うため入室を拒否しました', 'warn');
-          try { conn.close(); } catch(e){}
-          onlineConn = null;
-          onlineConnected = false;
-          onlineAuthed = false;
-        }
-        return;
-      }
-      if(data.t === 'authok'){
-        if(onlineIsHost) return;
-        onOnlineReady();
-        return;
-      }
-      if(data.t === 'authfail'){
-        setOnlineHint('合言葉が違います', 'warn');
-        try { conn.close(); } catch(e){}
-        destroyOnline();
-        document.getElementById('onlineLobby').style.display = '';
-        document.getElementById('onlineWaiting').style.display = 'none';
-        return;
-      }
-
-      if(!onlineAuthed) return; // ignore game msgs until authed
-
-      if(data.t === 'drop' && typeof data.c === 'number'){
-        if(gameOver || locked) return;
-        const col = data.c;
-        const row = lowestEmptyRow(col);
-        if(row === -1) return;
-        onlineApplyingRemote = true;
-        dropPiece(row, col);
-        onlineApplyingRemote = false;
-      } else if(data.t === 'reset'){
-        softClearBoard();
-        current = 'red';
-        nextStarter = 'red';
-        setStarterPickerEnabled(false);
-        setModePickerEnabled(true);
-        updateStatus();
-        hideWinOverlay();
-      } else if(data.t === 'ping'){
-        sendOnline({ t: 'pong' });
-      }
-    });
-    conn.on('close', () => {
-      onlineConnected = false;
-      onlineAuthed = false;
-      setOnlineHint('相手との接続が切れました', 'warn');
-      updateStatus();
-    });
-    conn.on('error', () => {
-      setOnlineHint('通信エラーが発生しました', 'warn');
-    });
-  }
-
-  function createRoom(){
-    if(typeof Peer === 'undefined'){
-      setOnlineHint('PeerJSの読み込みに失敗しました。ネット接続を確認してください', 'warn');
-      return;
-    }
-    const pass = normalizePass(document.getElementById('hostPassInput').value);
-    if(pass.length < 2){
-      setOnlineHint('合言葉は2文字以上にしてください', 'warn');
-      return;
-    }
-    destroyOnline();
-    onlineIsHost = true;
-    onlineMyColor = 'red';
-    onlinePassphrase = pass;
-    onlineRoomCode = genRoomCode();
-    const peerId = 'd4m-' + onlineRoomCode;
-
-    document.getElementById('onlineLobby').style.display = 'none';
-    document.getElementById('onlineWaiting').style.display = '';
-    document.getElementById('roomCodeDisplay').textContent = onlineRoomCode;
-    setOnlineHint('友達の参加を待っています…（合言葉も共有してください）', null);
-
-    onlinePeer = new Peer(peerId, { debug: 0 });
-    onlinePeer.on('open', () => {
-      setOnlineHint('部屋コードと合言葉を友達に送ってください', 'ok');
-    });
-    onlinePeer.on('connection', (conn) => {
-      if(onlineConn && onlineConn.open){
-        conn.close(); // only one friend
-        return;
-      }
-      wireConnection(conn);
-    });
-    onlinePeer.on('error', (err) => {
-      const msg = (err && err.type) ? String(err.type) : 'error';
-      if(msg === 'unavailable-id'){
-        setOnlineHint('そのコードは使えません。もう一度「部屋を作る」を押してください', 'warn');
-        destroyOnline();
-        document.getElementById('onlineLobby').style.display = '';
-      } else {
-        setOnlineHint('接続エラー: ' + msg, 'warn');
-      }
-    });
-  }
-
-  function joinRoom(){
-    if(typeof Peer === 'undefined'){
-      setOnlineHint('PeerJSの読み込みに失敗しました。ネット接続を確認してください', 'warn');
-      return;
-    }
-    const code = (document.getElementById('joinCodeInput').value || '').trim().toUpperCase();
-    const pass = normalizePass(document.getElementById('joinPassInput').value);
-    if(!/^[A-Z0-9]{10}$/.test(code)){
-      setOnlineHint('部屋コードは10文字です', 'warn');
-      return;
-    }
-    if(pass.length < 2){
-      setOnlineHint('合言葉を入力してください（2文字以上）', 'warn');
-      return;
-    }
-    destroyOnline();
-    onlineIsHost = false;
-    onlineMyColor = 'yellow';
-    onlineRoomCode = code;
-    onlinePassphrase = pass;
-    const peerId = 'd4m-' + code;
-
-    document.getElementById('onlineLobby').style.display = 'none';
-    document.getElementById('onlineWaiting').style.display = '';
-    document.getElementById('roomCodeDisplay').textContent = onlineRoomCode;
-    setOnlineHint('接続中…', null);
-
-    onlinePeer = new Peer({ debug: 0 });
-    onlinePeer.on('open', () => {
-      const conn = onlinePeer.connect(peerId, { reliable: true });
-      wireConnection(conn);
-    });
-    onlinePeer.on('error', (err) => {
-      const msg = (err && err.type) ? String(err.type) : 'error';
-      setOnlineHint('接続できません（コード・合言葉・ネットを確認）: ' + msg, 'warn');
-    });
-  }
-
-  function leaveRoom(){
-    destroyOnline();
-    softClearBoard();
-    current = nextStarter;
-    updateStatus();
-    setOnlineHint('部屋コードと合言葉を友達だけに共有してください（無料・登録不要）', null);
-    document.getElementById('onlineLobby').style.display = '';
-    document.getElementById('onlineWaiting').style.display = 'none';
-  }
-
-  document.getElementById('createRoomBtn').addEventListener('click', createRoom);
-  document.getElementById('joinRoomBtn').addEventListener('click', joinRoom);
-  document.getElementById('leaveRoomBtn').addEventListener('click', leaveRoom);
-  document.getElementById('copyRoomBtn').addEventListener('click', async () => {
-    const code = onlineRoomCode || document.getElementById('roomCodeDisplay').textContent;
-    const textToCopy = onlinePassphrase
-      ? ('部屋コード: ' + code + '\n合言葉: ' + onlinePassphrase)
-      : code;
-    try {
-      await navigator.clipboard.writeText(textToCopy);
-      setOnlineHint('部屋コードと合言葉をコピーしました', 'ok');
-    } catch(e){
-      setOnlineHint('コピーに失敗しました: ' + code, 'warn');
-    }
-  });
-  document.getElementById('joinCodeInput').addEventListener('keydown', (e) => {
-    if(e.key === 'Enter') joinRoom();
-  });
-
-  function showOnlineUI(show){
-    document.getElementById('onlinePanel').style.display = show ? '' : 'none';
-    // starter / first picker: hide first picker in online; color is fixed host=red
-    if(show){
-      document.getElementById('firstPicker').style.display = 'none';
-      document.getElementById('starterLabel').textContent = '色';
-      // disable changing colors mid online - host red guest yellow
-      starterRedBtn.disabled = true;
-      starterYellowBtn.disabled = true;
-    }
-  }
-
-  // Mode: online
-  document.getElementById('modeOnlineBtn').addEventListener('click', () => {
-    if(roundStarted) return;
-    hideCpuStartDialog();
-    softClearBoard();
-    gameMode = 'online';
-    document.getElementById('modeOnlineBtn').classList.add('active');
-    document.getElementById('modePvpBtn').classList.remove('active');
-    document.getElementById('modeCpuBtn').classList.remove('active');
-    syncStarterUI();
-    showOnlineUI(true);
-    setOnlineHint('合言葉を決めて「部屋を作る」、またはコード＋合言葉で「入室」', null);
-    updateStatus();
-  });
-
 
   document.getElementById('cpuStartOk').addEventListener('click', beginCpuFirstGame);
   document.getElementById('cpuStartCancel').addEventListener('click', () => {
