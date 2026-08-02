@@ -35,17 +35,11 @@
   html,body{
     margin:0; min-height:100%;
     font-family:'Noto Sans JP', sans-serif;
-    /* クラブのネオンとフロアをイメージした背景 */
     background:
-      /* ディスコボールの光 */
       radial-gradient(circle at 50% 15%, rgba(181, 73, 255, 0.6) 0%, transparent 40%),
-      /* 左の照明 */
       radial-gradient(ellipse at 15% 10%, rgba(255, 42, 122, 0.5) 0%, transparent 50%),
-      /* 右の照明 */
       radial-gradient(ellipse at 85% 10%, rgba(255, 42, 122, 0.5) 0%, transparent 50%),
-      /* フロアの格子模様っぽいグラデーション */
       linear-gradient(180deg, transparent 75%, rgba(147, 33, 168, 0.3) 85%, rgba(61, 10, 89, 0.6) 100%),
-      /* 全体のベースカラー */
       linear-gradient(180deg, #0d0121 0%, #290a4a 30%, #3a0d5c 60%, #150029 100%);
     background-attachment: fixed;
     color:var(--ink);
@@ -62,7 +56,6 @@
     min-height:100dvh;
   }
 
-  /* ---------- Title ---------- */
   h1.title{
     font-family:'Noto Sans JP', sans-serif;
     font-weight:900;
@@ -86,13 +79,79 @@
   }
 
   .tagline{
-    margin:0 0 18px;
+    margin:0 0 14px;
     font-size:13.5px;
     font-weight:500;
     color:var(--ink-soft);
     text-align:center;
     opacity:.9;
     text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  /* ---------- Mode & settings ---------- */
+  .settings-row{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin-bottom:12px;
+  }
+  .mode-picker, .diff-picker, .sfx-toggle{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border:1px solid rgba(255,255,255,0.3);
+    border-radius:999px;
+    padding:6px 8px 6px 12px;
+    box-shadow:0 3px 12px rgba(0,0,0,.3);
+  }
+  .mode-label, .diff-label{
+    font-size:12px;
+    font-weight:700;
+    color:var(--ink-soft);
+    white-space:nowrap;
+  }
+  .mode-btn, .diff-btn{
+    border:none;
+    border-radius:999px;
+    padding:5px 11px;
+    font-size:12px;
+    font-weight:800;
+    font-family:'Noto Sans JP', sans-serif;
+    cursor:pointer;
+    color:rgba(255,255,255,0.55);
+    background:rgba(255,255,255,0.08);
+    transition:background .15s ease, color .15s ease, transform .08s ease;
+  }
+  .mode-btn:active, .diff-btn:active{ transform:translateY(1px); }
+  .mode-btn.active, .diff-btn.active{
+    background:linear-gradient(180deg, #c084fc, #9333ea 70%);
+    color:#1a0533;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  .mode-btn:disabled, .diff-btn:disabled{
+    cursor:not-allowed;
+    opacity:.45;
+  }
+  .sfx-toggle button{
+    border:none;
+    border-radius:999px;
+    padding:5px 12px;
+    font-size:12.5px;
+    font-weight:800;
+    font-family:'Noto Sans JP', sans-serif;
+    cursor:pointer;
+    color:rgba(255,255,255,0.55);
+    background:rgba(255,255,255,0.08);
+    transition:background .15s ease, color .15s ease;
+  }
+  .sfx-toggle button.on{
+    background:linear-gradient(180deg, #86efac, #22c55e 70%);
+    color:#052e16;
   }
 
   /* ---------- Status pill & score ---------- */
@@ -169,6 +228,9 @@
   }
   .status-pill.win-state{
     box-shadow:0 3px 12px rgba(0,0,0,.3), 0 0 0 3px var(--current-glow), 0 0 18px 2px var(--current-glow);
+  }
+  .status-pill.cpu-thinking{
+    box-shadow:0 3px 12px rgba(0,0,0,.3), 0 0 0 2px #c084fc, 0 0 12px 1px #c084fc;
   }
   .status-dot{
     width:18px; height:18px; border-radius:50%;
@@ -328,7 +390,6 @@
     50%{ box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.6), 0 0 16px 4px rgba(255,255,255,.85); transform:scale(1.08); }
   }
 
-  /* flying (falling) piece */
   .flying-piece{
     position:absolute;
     border-radius:50%;
@@ -344,7 +405,6 @@
     box-shadow:inset 0 -4px 6px rgba(0,0,0,.4), inset 0 3px 3px rgba(255,255,255,.4), 0 4px 6px rgba(0,0,0,.5);
   }
 
-  /* column buttons overlay */
   .cols-overlay{
     position:absolute;
     left:12px; right:12px;
@@ -367,7 +427,6 @@
   }
   .col-btn:disabled{ cursor:default; }
 
-  /* winning connector line */
   .win-line-svg{
     position:absolute; inset:0;
     width:100%; height:100%;
@@ -411,7 +470,6 @@
     75%{ transform:translateX(6px); }
   }
 
-  /* ---------- tray (decorative, toy-accurate) ---------- */
   .tray-wrap{
     position:relative;
     display:flex;
@@ -437,7 +495,6 @@
   .tray .rc.red{ background:radial-gradient(circle at 32% 28%, var(--red-hi), var(--red) 55%, var(--red-deep) 100%); }
   .tray .rc.yellow{ background:radial-gradient(circle at 32% 28%, var(--gold-hi), var(--gold) 55%, var(--gold-deep) 100%); }
 
-  /* ---------- top-right reset icon ---------- */
   .icon-reset-btn{
     position:fixed;
     top:16px; right:16px;
@@ -477,7 +534,6 @@
     transform:rotate(25deg);
   }
 
-  /* ---------- reset confirm dialog ---------- */
   .confirm-overlay{
     position:fixed; inset:0;
     background:rgba(10,5,30,.7);
@@ -534,7 +590,6 @@
   }
   .confirm-btn:active{ transform:translateY(3px); }
 
-  /* ---------- win overlay ---------- */
   .win-overlay{
     position:fixed; inset:0;
     background:rgba(10,5,30,.7);
@@ -596,6 +651,17 @@
   <h1 class="title" id="titleText">悪魔の四目並べ<span class="title-sub">〜思考を蝕む四目の呪い〜</span></h1>
   <p class="tagline">縦・横・斜め、先に４つ並べたら勝ち！</p>
 
+  <div class="settings-row">
+    <div class="mode-picker" id="modePicker">
+      <span class="mode-label">モード</span>
+      <button class="mode-btn" id="modePvpBtn" data-mode="pvp">対人</button>
+      <button class="mode-btn active" id="modeCpuBtn" data-mode="cpu">CPU</button>
+    </div>
+    <div class="sfx-toggle">
+      <button id="sfxBtn" class="on" aria-label="効果音">🔊</button>
+    </div>
+  </div>
+
   <div class="hud">
     <div class="starter-picker" id="starterPicker">
       <span class="starter-label">先行</span>
@@ -653,14 +719,21 @@
 <script>
 (function(){
   const ROWS = 6, COLS = 7;
-  const board = Array.from({length:ROWS}, () => Array(COLS).fill(null)); // 'red' | 'yellow' | null
+  const board = Array.from({length:ROWS}, () => Array(COLS).fill(null));
   let current = 'red';
   let nextStarter = 'red';
   let roundStarted = false;
   let locked = false;
   let gameOver = false;
   let winOverlayTimer = null;
+  let cpuTimer = null;
   const score = { red:0, yellow:0 };
+
+  // Mode / SFX
+  let gameMode = 'cpu'; // 'pvp' | 'cpu'
+  let sfxEnabled = true;
+  let humanColor = 'red'; // in CPU mode, human plays this color (based on starter choice at start of round)
+  let audioCtx = null;
 
   // ---------- Build grid ----------
   const gridEl = document.getElementById('grid');
@@ -668,8 +741,8 @@
   const colsOverlayEl = document.getElementById('colsOverlay');
   const boardEl = document.getElementById('board');
 
-  const cellEls = [];   // cellEls[row][col] -> .cell
-  const pieceEls = [];  // pieceEls[row][col] -> .piece
+  const cellEls = [];
+  const pieceEls = [];
 
   for(let r=0; r<ROWS; r++){
     cellEls.push([]);
@@ -714,6 +787,7 @@
 
   function showGhost(c){
     if(gameOver || locked) return;
+    if(gameMode === 'cpu' && current !== humanColor) return;
     const slot = previewSlots[c];
     slot.classList.add('active');
     const ghost = slot.querySelector('.ghost');
@@ -752,13 +826,94 @@
 
   function updateStatus(){
     statusDot.classList.toggle('yellow', current === 'yellow');
-    statusText.textContent = current === 'red' ? '赤の番' : '黄の番';
+    statusPill.classList.remove('cpu-thinking');
+    if(gameMode === 'cpu' && current !== humanColor && !gameOver){
+      statusText.textContent = 'CPU思考中…';
+      statusPill.classList.add('cpu-thinking');
+    } else {
+      statusText.textContent = current === 'red' ? '赤の番' : '黄の番';
+    }
     statusPill.style.setProperty('--current-glow', current === 'red' ? 'var(--red)' : 'var(--gold)');
   }
   function updateScore(){
     scoreEl.innerHTML = `赤 <b class="sr">${score.red}</b> ー 黄 <b class="sy">${score.yellow}</b>`;
   }
   updateStatus();
+
+  // ---------- Audio (Web Audio API) ----------
+  function ensureAudio(){
+    if(!audioCtx){
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch(e){ audioCtx = null; }
+    }
+    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function playTone(freq, duration, type, vol, detune){
+    if(!sfxEnabled || !audioCtx) return;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.value = freq;
+    if(detune) osc.detune.value = detune;
+    gain.gain.setValueAtTime(vol || 0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  function playDropSound(){
+    ensureAudio();
+    if(!sfxEnabled || !audioCtx) return;
+    // soft thud
+    playTone(120, 0.12, 'sine', 0.22);
+    setTimeout(() => playTone(80, 0.18, 'triangle', 0.12), 40);
+    // short click
+    setTimeout(() => playTone(220, 0.05, 'square', 0.06), 80);
+  }
+
+  function playBounceSound(){
+    ensureAudio();
+    if(!sfxEnabled || !audioCtx) return;
+    playTone(180, 0.06, 'sine', 0.08);
+  }
+
+  function playInvalidSound(){
+    ensureAudio();
+    if(!sfxEnabled || !audioCtx) return;
+    playTone(90, 0.15, 'sawtooth', 0.1);
+    setTimeout(() => playTone(70, 0.2, 'sawtooth', 0.08), 80);
+  }
+
+  function playWinSound(){
+    ensureAudio();
+    if(!sfxEnabled || !audioCtx) return;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => {
+      setTimeout(() => playTone(f, 0.35, 'sine', 0.18), i * 90);
+    });
+    setTimeout(() => {
+      playTone(1318.5, 0.5, 'triangle', 0.12);
+    }, 400);
+  }
+
+  function playDrawSound(){
+    ensureAudio();
+    if(!sfxEnabled || !audioCtx) return;
+    playTone(300, 0.25, 'triangle', 0.12);
+    setTimeout(() => playTone(250, 0.3, 'triangle', 0.1), 150);
+  }
+
+  // ---------- Vibration ----------
+  function vibrate(pattern){
+    if(!sfxEnabled) return;
+    if(navigator.vibrate){
+      try { navigator.vibrate(pattern); } catch(e){}
+    }
+  }
 
   // ---------- Drop logic ----------
   function lowestEmptyRow(col){
@@ -770,11 +925,14 @@
 
   function attemptDrop(col){
     if(gameOver || locked) return;
+    if(gameMode === 'cpu' && current !== humanColor) return;
     const row = lowestEmptyRow(col);
     if(row === -1){
       boardEl.classList.remove('shake');
       void boardEl.offsetWidth;
       boardEl.classList.add('shake');
+      playInvalidSound();
+      vibrate([30, 40, 30]);
       return;
     }
     hideGhost(col);
@@ -785,10 +943,18 @@
     if(!roundStarted){
       roundStarted = true;
       setStarterPickerEnabled(false);
+      setModePickerEnabled(false);
+      // lock human color for this round
+      if(gameMode === 'cpu'){
+        humanColor = nextStarter; // human is the starter color chosen
+      }
     }
     locked = true;
     const player = current;
     board[row][col] = player;
+
+    playDropSound();
+    vibrate(25);
 
     const boardRect = boardEl.getBoundingClientRect();
     const slotRect = previewSlots[col].getBoundingClientRect();
@@ -808,20 +974,21 @@
     boardEl.appendChild(flyer);
 
     const distance = endTop - startTop;
-    const duration = Math.min(800, Math.max(450, distance * 1.3)); // アニメーション時間を少し延長
+    const duration = Math.min(800, Math.max(450, distance * 1.3));
+    const bounceHeight = size * 0.55;
 
-    // バウンドの高さを大幅に増加（ボールの半分の高さ）
-    const bounceHeight = size * 0.55; 
-
-    // より物理的（重力）に近いeasing（cubic-bezier）を設定
     const anim = flyer.animate([
-      { transform: 'translateY(0)', offset: 0, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' }, // 落下（加速）
-      { transform: `translateY(${distance}px)`, offset: 0.55, easing: 'cubic-bezier(0, 0, 0.2, 1)' }, // 1回目の着地 -> 上昇（減速）
-      { transform: `translateY(${distance - bounceHeight}px)`, offset: 0.72, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' }, // バウンド頂点 -> 落下（加速）
-      { transform: `translateY(${distance}px)`, offset: 0.86, easing: 'cubic-bezier(0, 0, 0.2, 1)' }, // 2回目の着地 -> 上昇（減速）
-      { transform: `translateY(${distance - bounceHeight * 0.25}px)`, offset: 0.94, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' }, // 小バウンド頂点 -> 落下
-      { transform: `translateY(${distance}px)`, offset: 1 } // 最終着地
+      { transform: 'translateY(0)', offset: 0, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' },
+      { transform: `translateY(${distance}px)`, offset: 0.55, easing: 'cubic-bezier(0, 0, 0.2, 1)' },
+      { transform: `translateY(${distance - bounceHeight}px)`, offset: 0.72, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' },
+      { transform: `translateY(${distance}px)`, offset: 0.86, easing: 'cubic-bezier(0, 0, 0.2, 1)' },
+      { transform: `translateY(${distance - bounceHeight * 0.25}px)`, offset: 0.94, easing: 'cubic-bezier(0.55, 0.085, 0.68, 0.53)' },
+      { transform: `translateY(${distance}px)`, offset: 1 }
     ], { duration, fill:'forwards' });
+
+    // bounce sound cues
+    setTimeout(() => { playBounceSound(); vibrate(12); }, duration * 0.55);
+    setTimeout(() => { playBounceSound(); }, duration * 0.86);
 
     anim.onfinish = () => {
       flyer.remove();
@@ -854,7 +1021,7 @@
     return board.every(row => row.every(cell => cell !== null));
   }
 
-  // ---------- Win line appeal (draws a glowing connector across the 4 winning pieces) ----------
+  // ---------- Win line ----------
   const winLineEl = document.getElementById('winLine');
   const winDotStart = document.getElementById('winDotStart');
   const winDotEnd = document.getElementById('winDotEnd');
@@ -925,23 +1092,218 @@
       score[player]++;
       updateScore();
       drawWinLine(winLine, player);
+      playWinSound();
+      vibrate([40, 60, 40, 60, 80]);
       roundStarted = false;
       setStarterPickerEnabled(true);
+      setModePickerEnabled(true);
       locked = false;
       winOverlayTimer = setTimeout(() => showWinOverlay(player), 800);
       return;
     }
     if(boardFull()){
       gameOver = true;
+      playDrawSound();
+      vibrate([50, 30, 50]);
       showWinOverlay(null);
       roundStarted = false;
       setStarterPickerEnabled(true);
+      setModePickerEnabled(true);
       locked = false;
       return;
     }
     current = current === 'red' ? 'yellow' : 'red';
     updateStatus();
     locked = false;
+
+    // CPU turn
+    if(gameMode === 'cpu' && current !== humanColor && !gameOver){
+      scheduleCpuMove();
+    }
+  }
+
+  // ---------- CPU AI ----------
+  function getValidCols(){
+    const cols = [];
+    for(let c=0; c<COLS; c++){
+      if(lowestEmptyRow(c) !== -1) cols.push(c);
+    }
+    return cols;
+  }
+
+  function simulateDrop(col, player){
+    const row = lowestEmptyRow(col);
+    if(row === -1) return null;
+    board[row][col] = player;
+    return row;
+  }
+
+  function undoDrop(row, col){
+    board[row][col] = null;
+  }
+
+  function wouldWin(col, player){
+    const row = simulateDrop(col, player);
+    if(row === null) return false;
+    const win = checkWin(row, col, player);
+    undoDrop(row, col);
+    return !!win;
+  }
+
+  // Evaluate a window of 4 consecutive cells
+  function evalWindow(cells, player){
+    const opp = player === 'red' ? 'yellow' : 'red';
+    let my = 0, op = 0, empty = 0;
+    for(const v of cells){
+      if(v === player) my++;
+      else if(v === opp) op++;
+      else empty++;
+    }
+    if(my > 0 && op > 0) return 0; // blocked
+    if(my === 4) return 100000;
+    if(op === 4) return -100000;
+    if(my === 3 && empty === 1) return 120;
+    if(my === 2 && empty === 2) return 20;
+    if(my === 1 && empty === 3) return 2;
+    if(op === 3 && empty === 1) return -100;
+    if(op === 2 && empty === 2) return -15;
+    return 0;
+  }
+
+  function scorePosition(player){
+    let score = 0;
+    // Horizontal
+    for(let r=0; r<ROWS; r++){
+      for(let c=0; c<=COLS-4; c++){
+        score += evalWindow([board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]], player);
+      }
+    }
+    // Vertical
+    for(let c=0; c<COLS; c++){
+      for(let r=0; r<=ROWS-4; r++){
+        score += evalWindow([board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]], player);
+      }
+    }
+    // Diagonal \
+    for(let r=0; r<=ROWS-4; r++){
+      for(let c=0; c<=COLS-4; c++){
+        score += evalWindow([board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]], player);
+      }
+    }
+    // Diagonal /
+    for(let r=3; r<ROWS; r++){
+      for(let c=0; c<=COLS-4; c++){
+        score += evalWindow([board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]], player);
+      }
+    }
+    // Center column preference (strong)
+    for(let r=0; r<ROWS; r++){
+      if(board[r][3] === player) score += 6;
+      if(board[r][2] === player || board[r][4] === player) score += 3;
+      if(board[r][1] === player || board[r][5] === player) score += 1;
+    }
+    return score;
+  }
+
+  function minimax(depth, maximizing, alpha, beta, cpuPlayer){
+    const human = cpuPlayer === 'red' ? 'yellow' : 'red';
+    const valid = getValidCols();
+
+    // Immediate win / loss check
+    for(const col of valid){
+      if(wouldWin(col, cpuPlayer)) return 1000000 - (10 - depth);
+    }
+    for(const col of valid){
+      if(wouldWin(col, human)) return -1000000 + (10 - depth);
+    }
+
+    if(depth === 0 || valid.length === 0){
+      return scorePosition(cpuPlayer);
+    }
+
+    // Move ordering: center first
+    valid.sort((a,b) => Math.abs(a-3) - Math.abs(b-3));
+
+    if(maximizing){
+      let maxEval = -Infinity;
+      for(const col of valid){
+        const row = simulateDrop(col, cpuPlayer);
+        if(row === null) continue;
+        const evalScore = minimax(depth-1, false, alpha, beta, cpuPlayer);
+        undoDrop(row, col);
+        if(evalScore > maxEval) maxEval = evalScore;
+        if(evalScore > alpha) alpha = evalScore;
+        if(beta <= alpha) break;
+      }
+      return maxEval;
+    } else {
+      let minEval = Infinity;
+      for(const col of valid){
+        const row = simulateDrop(col, human);
+        if(row === null) continue;
+        const evalScore = minimax(depth-1, true, alpha, beta, cpuPlayer);
+        undoDrop(row, col);
+        if(evalScore < minEval) minEval = evalScore;
+        if(evalScore < beta) beta = evalScore;
+        if(beta <= alpha) break;
+      }
+      return minEval;
+    }
+  }
+
+  function chooseCpuCol(){
+    const cpuPlayer = current;
+    const valid = getValidCols();
+    if(valid.length === 0) return 0;
+
+    // 1. Instant win
+    for(const col of valid){
+      if(wouldWin(col, cpuPlayer)) return col;
+    }
+    // 2. Block opponent win
+    const human = cpuPlayer === 'red' ? 'yellow' : 'red';
+    for(const col of valid){
+      if(wouldWin(col, human)) return col;
+    }
+
+    // 3. Avoid giving opponent an instant win on next turn (shallow threat)
+    // and full minimax search (depth 6 = very strong for browser)
+    let bestCol = valid[0];
+    let bestVal = -Infinity;
+    const ordered = [...valid].sort((a,b) => Math.abs(a-3) - Math.abs(b-3));
+
+    // Dynamic depth: deeper when fewer moves left
+    const empties = valid.length;
+    const depth = empties <= 4 ? 8 : empties <= 6 ? 7 : 6;
+
+    for(const col of ordered){
+      const row = simulateDrop(col, cpuPlayer);
+      if(row === null) continue;
+      const val = minimax(depth - 1, false, -Infinity, Infinity, cpuPlayer);
+      undoDrop(row, col);
+      if(val > bestVal){
+        bestVal = val;
+        bestCol = col;
+      }
+    }
+    return bestCol;
+  }
+
+  function scheduleCpuMove(){
+    locked = true;
+    updateStatus();
+    // Short delay so the UI updates, then think (search is fast enough)
+    const thinkTime = 350 + Math.random() * 250;
+    cpuTimer = setTimeout(() => {
+      if(gameOver) return;
+      const col = chooseCpuCol();
+      const row = lowestEmptyRow(col);
+      if(row !== -1){
+        dropPiece(row, col);
+      } else {
+        locked = false;
+      }
+    }, thinkTime);
   }
 
   // ---------- Win overlay ----------
@@ -957,10 +1319,12 @@
       winText.textContent = '引き分け！';
     } else if(player === 'red'){
       winEmoji.textContent = '🔴🎉';
-      winText.textContent = '赤の勝ち！';
+      winText.textContent = gameMode === 'cpu' && humanColor === 'red' ? 'あなたの勝ち！' :
+                            gameMode === 'cpu' ? 'CPUの勝ち…' : '赤の勝ち！';
     } else {
       winEmoji.textContent = '🟡🎉';
-      winText.textContent = '黄の勝ち！';
+      winText.textContent = gameMode === 'cpu' && humanColor === 'yellow' ? 'あなたの勝ち！' :
+                            gameMode === 'cpu' ? 'CPUの勝ち…' : '黄の勝ち！';
     }
     winOverlay.classList.add('show');
   }
@@ -971,6 +1335,7 @@
   // ---------- Reset ----------
   function resetGame(){
     if(winOverlayTimer){ clearTimeout(winOverlayTimer); winOverlayTimer = null; }
+    if(cpuTimer){ clearTimeout(cpuTimer); cpuTimer = null; }
     for(let r=0; r<ROWS; r++){
       for(let c=0; c<COLS; c++){
         board[r][c] = null;
@@ -982,11 +1347,18 @@
     gameOver = false;
     locked = false;
     roundStarted = false;
+    humanColor = nextStarter;
     setStarterPickerEnabled(true);
-    statusPill.classList.remove('win-state');
+    setModePickerEnabled(true);
+    statusPill.classList.remove('win-state', 'cpu-thinking');
     updateStatus();
     hideWinOverlay();
     resetWinLine();
+
+    // if CPU mode and CPU starts (human is not starter)
+    if(gameMode === 'cpu' && current !== humanColor){
+      scheduleCpuMove();
+    }
   }
 
   function resetScore(){
@@ -1007,8 +1379,11 @@
     starterYellowBtn.classList.toggle('active', color === 'yellow');
     starterRedBtn.setAttribute('aria-pressed', color === 'red' ? 'true' : 'false');
     starterYellowBtn.setAttribute('aria-pressed', color === 'yellow' ? 'true' : 'false');
-    current = color;
-    updateStatus();
+    if(!roundStarted){
+      current = color;
+      humanColor = color;
+      updateStatus();
+    }
   }
 
   starterRedBtn.addEventListener('click', () => setNextStarter('red'));
@@ -1018,6 +1393,40 @@
     starterRedBtn.disabled = !enabled;
     starterYellowBtn.disabled = !enabled;
   }
+
+  function setModePickerEnabled(enabled){
+    document.getElementById('modePvpBtn').disabled = !enabled;
+    document.getElementById('modeCpuBtn').disabled = !enabled;
+  }
+
+  // Mode buttons
+  document.getElementById('modePvpBtn').addEventListener('click', () => {
+    if(roundStarted) return;
+    gameMode = 'pvp';
+    document.getElementById('modePvpBtn').classList.add('active');
+    document.getElementById('modeCpuBtn').classList.remove('active');
+    updateStatus();
+  });
+  document.getElementById('modeCpuBtn').addEventListener('click', () => {
+    if(roundStarted) return;
+    gameMode = 'cpu';
+    document.getElementById('modeCpuBtn').classList.add('active');
+    document.getElementById('modePvpBtn').classList.remove('active');
+    humanColor = nextStarter;
+    updateStatus();
+  });
+
+  // SFX toggle
+  const sfxBtn = document.getElementById('sfxBtn');
+  sfxBtn.addEventListener('click', () => {
+    sfxEnabled = !sfxEnabled;
+    sfxBtn.classList.toggle('on', sfxEnabled);
+    sfxBtn.textContent = sfxEnabled ? '🔊' : '🔇';
+    if(sfxEnabled){
+      ensureAudio();
+      playTone(440, 0.08, 'sine', 0.1);
+    }
+  });
 
   function openConfirm(action, text){
     pendingAction = action;
@@ -1043,6 +1452,10 @@
     openConfirm('score', '戦績をリセットしますか？');
   });
   playAgainBtn.addEventListener('click', resetGame);
+
+  // unlock audio on first interaction
+  document.body.addEventListener('click', () => ensureAudio(), { once: true });
+  document.body.addEventListener('touchstart', () => ensureAudio(), { once: true });
 
 })();
 </script>
