@@ -654,11 +654,8 @@
   <div class="settings-row">
     <div class="mode-picker" id="modePicker">
       <span class="mode-label">モード</span>
-      <button class="mode-btn" id="modePvpBtn" data-mode="pvp">対人</button>
-      <button class="mode-btn active" id="modeCpuBtn" data-mode="cpu">CPU</button>
-    </div>
-    <div class="sfx-toggle">
-      <button id="sfxBtn" class="on" aria-label="効果音">🔊</button>
+      <button class="mode-btn active" id="modePvpBtn" data-mode="pvp">対人</button>
+      <button class="mode-btn" id="modeCpuBtn" data-mode="cpu">CPU</button>
     </div>
   </div>
 
@@ -730,7 +727,7 @@
   const score = { red:0, yellow:0 };
 
   // Mode / SFX
-  let gameMode = 'cpu'; // 'pvp' | 'cpu'
+  let gameMode = 'pvp'; // 'pvp' | 'cpu'
   let sfxEnabled = true;
   let humanColor = 'red'; // in CPU mode, human plays this color (based on starter choice at start of round)
   let audioCtx = null;
@@ -1416,17 +1413,6 @@
     updateStatus();
   });
 
-  // SFX toggle
-  const sfxBtn = document.getElementById('sfxBtn');
-  sfxBtn.addEventListener('click', () => {
-    sfxEnabled = !sfxEnabled;
-    sfxBtn.classList.toggle('on', sfxEnabled);
-    sfxBtn.textContent = sfxEnabled ? '🔊' : '🔇';
-    if(sfxEnabled){
-      ensureAudio();
-      playTone(440, 0.08, 'sine', 0.1);
-    }
-  });
 
   function openConfirm(action, text){
     pendingAction = action;
