@@ -846,8 +846,13 @@
     statusDot.classList.toggle('yellow', current === 'yellow');
     statusPill.classList.remove('cpu-thinking');
     if(gameMode === 'cpu' && current !== humanColor && !gameOver){
-      statusText.textContent = 'CPU思考中…';
-      statusPill.classList.add('cpu-thinking');
+      // 「思考中」は実際に探索中（locked）のときだけ
+      if(locked){
+        statusText.textContent = 'CPU思考中…';
+        statusPill.classList.add('cpu-thinking');
+      } else {
+        statusText.textContent = 'CPUの番';
+      }
     } else {
       statusText.textContent = current === 'red' ? '赤の番' : '黄の番';
     }
