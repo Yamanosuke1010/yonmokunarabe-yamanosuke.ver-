@@ -210,6 +210,11 @@
     color:#3a2600;
     box-shadow:0 2px 6px rgba(0,0,0,.4);
   }
+  .starter-btn.active:not(.red):not(.yellow){
+    background:linear-gradient(180deg, #c084fc, #9333ea 70%);
+    color:#1a0533;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
   .status-pill{
     display:flex;
     align-items:center;
@@ -657,11 +662,16 @@
       <button class="mode-btn active" id="modePvpBtn" data-mode="pvp">対人</button>
       <button class="mode-btn" id="modeCpuBtn" data-mode="cpu">CPU</button>
     </div>
+    <div class="mode-picker" id="firstPicker" style="display:none;">
+      <span class="mode-label">先攻</span>
+      <button class="mode-btn active" id="firstHumanBtn" data-first="human" aria-pressed="true">自分</button>
+      <button class="mode-btn" id="firstCpuBtn" data-first="cpu" aria-pressed="false">CPU</button>
+    </div>
   </div>
 
   <div class="hud">
     <div class="starter-picker" id="starterPicker">
-      <span class="starter-label">先行</span>
+      <span class="starter-label" id="starterLabel">先行</span>
       <button class="starter-btn red active" id="starterRedBtn" data-color="red" aria-pressed="true">赤</button>
       <button class="starter-btn yellow" id="starterYellowBtn" data-color="yellow" aria-pressed="false">黄</button>
     </div>
@@ -713,6 +723,16 @@
   </div>
 </div>
 
+<div class="confirm-overlay" id="cpuStartOverlay">
+  <div class="confirm-card">
+    <div class="confirm-text">CPUからゲームスタート</div>
+    <div class="confirm-actions">
+      <button id="cpuStartCancel" class="confirm-btn no">キャンセル</button>
+      <button id="cpuStartOk" class="confirm-btn yes">スタート</button>
+    </div>
+  </div>
+</div>
+
 <script>
 (function(){
   const ROWS = 6, COLS = 7;
@@ -729,7 +749,8 @@
   // Mode / SFX
   let gameMode = 'pvp'; // 'pvp' | 'cpu'
   let sfxEnabled = true;
-  let humanColor = 'red'; // in CPU mode, human plays this color (based on starter choice at start of round)
+  let humanColor = 'red'; // color the human plays in CPU mode
+  let cpuFirst = false;  // if true, CPU moves first in CPU mode
   let audioCtx = null;
 
   // ---------- Build grid ----------
@@ -922,7 +943,13 @@
 
   function attemptDrop(col){
     if(gameOver || locked) return;
-    if(gameMode === 'cpu' && current !== humanColor) return;
+    // CPU first: ignore board taps (use start dialog instead)
+    if(gameMode === 'cpu' && current !== humanColor){
+      if(!roundStarted && isBoardEmpty()){
+        showCpuStartDialog();
+      }
+      return;
+    }
     const row = lowestEmptyRow(col);
     if(row === -1){
       boardEl.classList.remove('shake');
@@ -941,10 +968,6 @@
       roundStarted = true;
       setStarterPickerEnabled(false);
       setModePickerEnabled(false);
-      // lock human color for this round
-      if(gameMode === 'cpu'){
-        humanColor = nextStarter; // human is the starter color chosen
-      }
     }
     locked = true;
     const player = current;
@@ -1330,8 +1353,25 @@
   }
 
   // ---------- Reset ----------
-  function resetGame(){
-    if(winOverlayTimer){ clearTimeout(winOverlayTimer); winOverlayTimer = null; }
+  function computeNextStarter(){
+    if(gameMode === 'cpu'){
+      nextStarter = cpuFirst
+        ? (humanColor === 'red' ? 'yellow' : 'red')
+        : humanColor;
+    }
+    // pvp: nextStarter is set directly by color buttons
+  }
+
+  function isBoardEmpty(){
+    for(let r=0; r<ROWS; r++){
+      for(let c=0; c<COLS; c++){
+        if(board[r][c] !== null) return false;
+      }
+    }
+    return true;
+  }
+
+  function softClearBoard(){
     if(cpuTimer){ clearTimeout(cpuTimer); cpuTimer = null; }
     for(let r=0; r<ROWS; r++){
       for(let c=0; c<COLS; c++){
@@ -1340,22 +1380,112 @@
         cellEls[r][c].classList.remove('win');
       }
     }
-    current = nextStarter;
     gameOver = false;
     locked = false;
     roundStarted = false;
-    humanColor = nextStarter;
-    setStarterPickerEnabled(true);
-    setModePickerEnabled(true);
-    statusPill.classList.remove('win-state', 'cpu-thinking');
-    updateStatus();
-    hideWinOverlay();
     resetWinLine();
+    hideWinOverlay();
+    statusPill.classList.remove('win-state', 'cpu-thinking');
+  }
 
-    // if CPU mode and CPU starts (human is not starter)
-    if(gameMode === 'cpu' && current !== humanColor){
+  function syncStarterUI(){
+    const label = document.getElementById('starterLabel');
+    const firstPicker = document.getElementById('firstPicker');
+    const redBtn = document.getElementById('starterRedBtn');
+    const yellowBtn = document.getElementById('starterYellowBtn');
+    const firstHumanBtn = document.getElementById('firstHumanBtn');
+    const firstCpuBtn = document.getElementById('firstCpuBtn');
+
+    if(gameMode === 'cpu'){
+      label.textContent = '自分';
+      firstPicker.style.display = '';
+    } else {
+      label.textContent = '先行';
+      firstPicker.style.display = 'none';
+    }
+
+    if(gameMode === 'pvp'){
+      redBtn.classList.toggle('active', nextStarter === 'red');
+      yellowBtn.classList.toggle('active', nextStarter === 'yellow');
+    } else {
+      redBtn.classList.toggle('active', humanColor === 'red');
+      yellowBtn.classList.toggle('active', humanColor === 'yellow');
+    }
+    redBtn.setAttribute('aria-pressed', redBtn.classList.contains('active') ? 'true' : 'false');
+    yellowBtn.setAttribute('aria-pressed', yellowBtn.classList.contains('active') ? 'true' : 'false');
+
+    firstHumanBtn.classList.toggle('active', !cpuFirst);
+    firstCpuBtn.classList.toggle('active', cpuFirst);
+    firstHumanBtn.setAttribute('aria-pressed', !cpuFirst ? 'true' : 'false');
+    firstCpuBtn.setAttribute('aria-pressed', cpuFirst ? 'true' : 'false');
+  }
+
+  // Apply settings without starting CPU automatically.
+  function applyStarterToCurrent(){
+    computeNextStarter();
+    if(!roundStarted){
+      if(cpuTimer){ clearTimeout(cpuTimer); cpuTimer = null; }
+      current = nextStarter;
+      locked = false;
+      updateStatus();
+    }
+  }
+
+  const cpuStartOverlay = document.getElementById('cpuStartOverlay');
+
+  function showCpuStartDialog(){
+    if(gameMode !== 'cpu' || cpuFirst !== true) return;
+    if(roundStarted || gameOver) return;
+    computeNextStarter();
+    current = nextStarter;
+    updateStatus();
+    cpuStartOverlay.classList.add('show');
+  }
+
+  function hideCpuStartDialog(){
+    cpuStartOverlay.classList.remove('show');
+  }
+
+  function beginCpuFirstGame(){
+    hideCpuStartDialog();
+    if(gameMode !== 'cpu' || !cpuFirst) return;
+    softClearBoard();
+    computeNextStarter();
+    current = nextStarter;
+    locked = false;
+    updateStatus();
+    if(current !== humanColor){
       scheduleCpuMove();
     }
+  }
+
+  function cancelCpuStartDialog(){
+    hideCpuStartDialog();
+    // stay on settings: force human-first so user can freely adjust
+    // (keep cpuFirst selection but don't start)
+    if(cpuTimer){ clearTimeout(cpuTimer); cpuTimer = null; }
+    locked = false;
+    roundStarted = false;
+    updateStatus();
+  }
+
+  // After win / continue: if CPU first, show dialog instead of auto-starting
+  function promptOrStartCpu(){
+    if(gameMode === 'cpu' && cpuFirst && !gameOver && !roundStarted && isBoardEmpty()){
+      showCpuStartDialog();
+    }
+  }
+
+  function resetGame(){
+    if(winOverlayTimer){ clearTimeout(winOverlayTimer); winOverlayTimer = null; }
+    hideCpuStartDialog();
+    softClearBoard();
+    computeNextStarter();
+    current = nextStarter;
+    setStarterPickerEnabled(true);
+    setModePickerEnabled(true);
+    updateStatus();
+    promptOrStartCpu();
   }
 
   function resetScore(){
@@ -1370,25 +1500,47 @@
   const starterYellowBtn = document.getElementById('starterYellowBtn');
   let pendingAction = 'board';
 
-  function setNextStarter(color){
-    nextStarter = color;
-    starterRedBtn.classList.toggle('active', color === 'red');
-    starterYellowBtn.classList.toggle('active', color === 'yellow');
-    starterRedBtn.setAttribute('aria-pressed', color === 'red' ? 'true' : 'false');
-    starterYellowBtn.setAttribute('aria-pressed', color === 'yellow' ? 'true' : 'false');
-    if(!roundStarted){
-      current = color;
+  function setHumanOrStarterColor(color){
+    if(roundStarted) return;
+    // changing options clears the board so settings always apply cleanly
+    softClearBoard();
+    if(gameMode === 'cpu'){
       humanColor = color;
-      updateStatus();
+    } else {
+      nextStarter = color;
+      humanColor = color;
     }
+    syncStarterUI();
+    applyStarterToCurrent();
+    // do NOT auto-start CPU here — user must reset/continue or we wait
+    // if CPU first, they can tap a column to kick off (handled in attemptDrop)
   }
 
-  starterRedBtn.addEventListener('click', () => setNextStarter('red'));
-  starterYellowBtn.addEventListener('click', () => setNextStarter('yellow'));
+  starterRedBtn.addEventListener('click', () => setHumanOrStarterColor('red'));
+  starterYellowBtn.addEventListener('click', () => setHumanOrStarterColor('yellow'));
+
+  document.getElementById('firstHumanBtn').addEventListener('click', () => {
+    if(roundStarted) return;
+    hideCpuStartDialog();
+    softClearBoard();
+    cpuFirst = false;
+    syncStarterUI();
+    applyStarterToCurrent();
+  });
+  document.getElementById('firstCpuBtn').addEventListener('click', () => {
+    if(roundStarted) return;
+    softClearBoard();
+    cpuFirst = true;
+    syncStarterUI();
+    applyStarterToCurrent();
+    showCpuStartDialog();
+  });
 
   function setStarterPickerEnabled(enabled){
     starterRedBtn.disabled = !enabled;
     starterYellowBtn.disabled = !enabled;
+    document.getElementById('firstHumanBtn').disabled = !enabled;
+    document.getElementById('firstCpuBtn').disabled = !enabled;
   }
 
   function setModePickerEnabled(enabled){
@@ -1399,20 +1551,30 @@
   // Mode buttons
   document.getElementById('modePvpBtn').addEventListener('click', () => {
     if(roundStarted) return;
+    hideCpuStartDialog();
+    softClearBoard();
     gameMode = 'pvp';
     document.getElementById('modePvpBtn').classList.add('active');
     document.getElementById('modeCpuBtn').classList.remove('active');
-    updateStatus();
+    nextStarter = humanColor;
+    syncStarterUI();
+    applyStarterToCurrent();
   });
   document.getElementById('modeCpuBtn').addEventListener('click', () => {
     if(roundStarted) return;
+    softClearBoard();
     gameMode = 'cpu';
     document.getElementById('modeCpuBtn').classList.add('active');
     document.getElementById('modePvpBtn').classList.remove('active');
-    humanColor = nextStarter;
-    updateStatus();
+    syncStarterUI();
+    applyStarterToCurrent();
+    if(cpuFirst) showCpuStartDialog();
   });
 
+  document.getElementById('cpuStartOk').addEventListener('click', beginCpuFirstGame);
+  document.getElementById('cpuStartCancel').addEventListener('click', () => {
+    cancelCpuStartDialog();
+  });
 
   function openConfirm(action, text){
     pendingAction = action;
@@ -1438,6 +1600,10 @@
     openConfirm('score', '戦績をリセットしますか？');
   });
   playAgainBtn.addEventListener('click', resetGame);
+
+  // initial UI sync
+  syncStarterUI();
+  applyStarterToCurrent();
 
   // unlock audio on first interaction
   document.body.addEventListener('click', () => ensureAudio(), { once: true });
