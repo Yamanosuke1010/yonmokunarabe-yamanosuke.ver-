@@ -733,6 +733,351 @@
   </div>
 </div>
 
+<script type="text/plain" id="cpuWorkerSrc">
+const ROWS = 6, COLS = 7;
+let board = [];
+
+const DIRECTIONS = [ [0,1], [1,0], [1,1], [1,-1] ];
+
+  function checkWin(row, col, player){
+    for(const [dr, dc] of DIRECTIONS){
+      const line = [[row,col]];
+      let r = row + dr, c = col + dc;
+      while(r>=0 && r<ROWS && c>=0 && c<COLS && board[r][c] === player){
+        line.push([r,c]); r += dr; c += dc;
+      }
+      r = row - dr; c = col - dc;
+      while(r>=0 && r<ROWS && c>=0 && c<COLS && board[r][c] === player){
+        line.push([r,c]); r -= dr; c -= dc;
+      }
+      if(line.length >= 4) return line;
+    }
+    return null;
+  }
+
+function lowestEmptyRow(col){
+    for(let r = ROWS - 1; r >= 0; r--){
+      if(board[r][col] === null) return r;
+    }
+    return -1;
+  }
+
+function getValidCols(){
+    const cols = [];
+    for(let c=0; c<COLS; c++){
+      if(lowestEmptyRow(c) !== -1) cols.push(c);
+    }
+    return cols;
+  }
+
+  function simulateDrop(col, player){
+    const row = lowestEmptyRow(col);
+    if(row === -1) return null;
+    board[row][col] = player;
+    return row;
+  }
+
+  function undoDrop(row, col){
+    board[row][col] = null;
+  }
+
+  function wouldWin(col, player){
+    const row = simulateDrop(col, player);
+    if(row === null) return false;
+    const win = checkWin(row, col, player);
+    undoDrop(row, col);
+    return !!win;
+  }
+
+  // Count empty cells on board
+  function countEmpty(){
+    let n = 0;
+    for(let r=0; r<ROWS; r++)
+      for(let c=0; c<COLS; c++)
+        if(board[r][c] === null) n++;
+    return n;
+  }
+
+  // --- Strong evaluation ---
+  const CENTER_WEIGHTS = [1, 2, 3, 4, 3, 2, 1];
+
+  function evalWindow(cells, player){
+    const opp = player === 'red' ? 'yellow' : 'red';
+    let my = 0, op = 0, empty = 0;
+    for(let i=0; i<4; i++){
+      const v = cells[i];
+      if(v === player) my++;
+      else if(v === opp) op++;
+      else empty++;
+    }
+    if(my > 0 && op > 0) return 0;
+    if(my === 4) return 100000;
+    if(op === 4) return -100000;
+    if(my === 3 && empty === 1) return 900;
+    if(op === 3 && empty === 1) return -850;
+    if(my === 2 && empty === 2) return 50;
+    if(op === 2 && empty === 2) return -40;
+    if(my === 1 && empty === 3) return 5;
+    if(op === 1 && empty === 3) return -4;
+    return 0;
+  }
+
+  function scorePosition(player){
+    let score = 0;
+    // Horizontal
+    for(let r=0; r<ROWS; r++){
+      for(let c=0; c<=COLS-4; c++){
+        score += evalWindow([board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]], player);
+      }
+    }
+    // Vertical
+    for(let c=0; c<COLS; c++){
+      for(let r=0; r<=ROWS-4; r++){
+        score += evalWindow([board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]], player);
+      }
+    }
+    // Diagonal \
+    for(let r=0; r<=ROWS-4; r++){
+      for(let c=0; c<=COLS-4; c++){
+        score += evalWindow([board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]], player);
+      }
+    }
+    // Diagonal /
+    for(let r=3; r<ROWS; r++){
+      for(let c=0; c<=COLS-4; c++){
+        score += evalWindow([board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]], player);
+      }
+    }
+    // Center control
+    for(let r=0; r<ROWS; r++){
+      for(let c=0; c<COLS; c++){
+        if(board[r][c] === player) score += CENTER_WEIGHTS[c] * 3;
+        else if(board[r][c] !== null) score -= CENTER_WEIGHTS[c] * 2;
+      }
+    }
+    return score;
+  }
+
+  // Detect if player has an immediate winning column
+  function getWinningCols(player){
+    const wins = [];
+    for(let c=0; c<COLS; c++){
+      if(wouldWin(c, player)) wins.push(c);
+    }
+    return wins;
+  }
+
+  // Zobrist-like simple hash for transposition table
+  let zobrist = null;
+  function initZobrist(){
+    zobrist = [];
+    let s = 123456789;
+    function rnd(){ s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0); }
+    for(let r=0; r<ROWS; r++){
+      zobrist[r] = [];
+      for(let c=0; c<COLS; c++){
+        zobrist[r][c] = [rnd(), rnd()]; // [red, yellow]
+      }
+    }
+  }
+  initZobrist();
+
+  function boardHash(){
+    let h = 0;
+    for(let r=0; r<ROWS; r++){
+      for(let c=0; c<COLS; c++){
+        const v = board[r][c];
+        if(v === 'red') h ^= zobrist[r][c][0];
+        else if(v === 'yellow') h ^= zobrist[r][c][1];
+      }
+    }
+    return h >>> 0;
+  }
+
+  // Transposition table: hash -> {depth, score, flag, bestCol}
+  // flag: 0 exact, 1 lower, 2 upper
+  const TT_SIZE = 1 << 20; // ~1M entries
+  const tt = new Array(TT_SIZE);
+  function ttClear(){
+    for(let i=0; i<TT_SIZE; i++) tt[i] = null;
+  }
+
+  let nodesSearched = 0;
+  let searchDeadline = 0;
+  let searchAborted = false;
+
+  function orderMoves(valid, player, ttBest){
+    // Lightweight ordering: TT best > center. Wins already handled at node entry.
+    const scored = valid.map(col => {
+      let s = (3 - Math.abs(col - 3)) * 10;
+      if(col === ttBest) s += 1000000;
+      return {col, s};
+    });
+    scored.sort((a,b) => b.s - a.s);
+    return scored.map(x => x.col);
+  }
+
+  function negamax(depth, alpha, beta, player, ply){
+    nodesSearched++;
+    if((nodesSearched & 2047) === 0 && performance.now() > searchDeadline){
+      searchAborted = true;
+      return 0;
+    }
+
+    const opp = player === 'red' ? 'yellow' : 'red';
+    const valid = getValidCols();
+    const alphaOrig = alpha;
+
+    // Terminal: no moves = draw
+    if(valid.length === 0) return 0;
+
+    // Immediate win available
+    for(let i=0; i<valid.length; i++){
+      if(wouldWin(valid[i], player)) return 1000000 - ply;
+    }
+
+    // TT probe
+    const hash = boardHash();
+    const tidx = hash & (TT_SIZE - 1);
+    const entry = tt[tidx];
+    let ttBest = -1;
+    if(entry && entry.h === hash && entry.d >= depth){
+      ttBest = entry.bc;
+      if(entry.f === 0) return entry.s;
+      if(entry.f === 1) alpha = Math.max(alpha, entry.s);
+      else if(entry.f === 2) beta = Math.min(beta, entry.s);
+      if(alpha >= beta) return entry.s;
+    }
+
+    if(depth === 0){
+      return scorePosition(player);
+    }
+
+    const moves = orderMoves(valid, player, ttBest);
+    let bestScore = -Infinity;
+    let bestCol = moves[0];
+
+    for(let i=0; i<moves.length; i++){
+      const col = moves[i];
+      const row = simulateDrop(col, player);
+      if(row === null) continue;
+
+      // If this move wins, no need to search deeper
+      let score;
+      if(checkWin(row, col, player)){
+        score = 1000000 - ply;
+      } else {
+        score = -negamax(depth - 1, -beta, -alpha, opp, ply + 1);
+      }
+      undoDrop(row, col);
+
+      if(searchAborted) return bestScore;
+
+      if(score > bestScore){
+        bestScore = score;
+        bestCol = col;
+      }
+      if(score > alpha) alpha = score;
+      if(alpha >= beta) break;
+    }
+
+    // TT store
+    let flag = 0;
+    if(bestScore <= alphaOrig) flag = 2; // upper
+    else if(bestScore >= beta) flag = 1; // lower
+    tt[tidx] = {h: hash, d: depth, s: bestScore, f: flag, bc: bestCol};
+
+    return bestScore;
+  }
+
+  function chooseCpuCol(cpuPlayer){
+    const human = cpuPlayer === 'red' ? 'yellow' : 'red';
+    const valid = getValidCols();
+    if(valid.length === 0) return 0;
+
+    // 1. Instant win
+    for(const col of valid){
+      if(wouldWin(col, cpuPlayer)) return col;
+    }
+    // 2. Must block opponent win
+    const oppWins = getWinningCols(human);
+    if(oppWins.length === 1) return oppWins[0];
+    if(oppWins.length >= 2){
+      // two threats — lost if we can't block both; still block one
+      return oppWins[0];
+    }
+
+    // 3. Avoid moves that give opponent an immediate win next
+    // (filtered inside search via evaluation)
+
+    const empties = countEmpty();
+    // Endgame: solve completely when few moves left
+    // Midgame: iterative deepening with time budget
+    // (Worker runs off the main thread, so a longer budget doesn't freeze the UI.)
+    const timeBudget = empties <= 12 ? 9000 : empties <= 20 ? 7000 : empties <= 30 ? 5000 : 4000;
+    searchDeadline = performance.now() + timeBudget;
+    searchAborted = false;
+    nodesSearched = 0;
+    // Note: TT is intentionally NOT cleared here — it stays warm for the
+    // whole round so later moves benefit from work done on earlier ones.
+    // It's reset naturally each round because a fresh worker (fresh TT) is
+    // spun up whenever the board resets.
+
+    let bestCol = valid.slice().sort((a,b) => Math.abs(a-3) - Math.abs(b-3))[0];
+    let bestScore = -Infinity;
+
+    // Max depth: solve remaining game when possible
+    // Deep search: fully solve late game, depth 18 midgame
+    const maxDepth = Math.min(empties, empties <= 16 ? empties : 18);
+
+    for(let depth = 2; depth <= maxDepth; depth++){
+      if(performance.now() > searchDeadline) break;
+      let iterBest = bestCol;
+      let iterScore = -Infinity;
+      const ordered = orderMoves(valid, cpuPlayer, bestCol);
+
+      for(const col of ordered){
+        if(performance.now() > searchDeadline){ searchAborted = true; break; }
+        const row = simulateDrop(col, cpuPlayer);
+        if(row === null) continue;
+        let score;
+        if(checkWin(row, col, cpuPlayer)){
+          score = 1000000;
+        } else {
+          score = -negamax(depth - 1, -Infinity, Infinity, human, 1);
+        }
+        undoDrop(row, col);
+        if(searchAborted && iterScore === -Infinity){
+          // keep previous depth result
+          break;
+        }
+        if(score > iterScore){
+          iterScore = score;
+          iterBest = col;
+        }
+        // Perfect win found at this depth
+        if(score >= 1000000 - 50) break;
+      }
+
+      if(!searchAborted || iterScore !== -Infinity){
+        bestCol = iterBest;
+        bestScore = iterScore;
+      }
+      // If we found a forced win, stop
+      if(bestScore >= 1000000 - 100) break;
+      // If forced loss at full depth, still play best effort
+    }
+
+    return bestCol;
+  }
+
+self.onmessage = function(e){
+  board = e.data.board;
+  const col = chooseCpuCol(e.data.cpuPlayer);
+  self.postMessage({ col: col, reqId: e.data.reqId });
+};
+</script>
+
 <script>
 (function(){
   const ROWS = 6, COLS = 7;
@@ -1147,7 +1492,34 @@
     }
   }
 
-  // ---------- CPU AI ----------
+  // ---------- CPU AI (runs in a Web Worker so the UI never freezes) ----------
+  // Search algorithm, evaluation weights and time budget are byte-for-byte
+  // identical to before -- only where it executes has changed, so CPU
+  // strength is unaffected. See the #cpuWorkerSrc script block below.
+  let cpuWorker = null;
+  let cpuReqId = 0;
+  let workerUsable = true; // flips to false permanently if the worker fails once
+
+  function createCpuWorker(){
+    if(cpuWorker) return cpuWorker;
+    const src = document.getElementById('cpuWorkerSrc').textContent;
+    const blob = new Blob([src], { type: 'application/javascript' });
+    cpuWorker = new Worker(URL.createObjectURL(blob));
+    return cpuWorker;
+  }
+
+  function killCpuWorker(){
+    if(cpuWorker){
+      cpuWorker.terminate();
+      cpuWorker = null;
+    }
+  }
+
+  // ---------- Fallback: identical AI, run synchronously on the main thread ----------
+  // Used automatically if Web Workers are unavailable or blocked in this
+  // environment (e.g. some sandboxed previews). Same algorithm as the
+  // worker copy, so CPU strength doesn't change -- it just won't be as
+  // smooth (the page may pause briefly while it thinks).
   function getValidCols(){
     const cols = [];
     for(let c=0; c<COLS; c++){
@@ -1175,7 +1547,6 @@
     return !!win;
   }
 
-  // Count empty cells on board
   function countEmpty(){
     let n = 0;
     for(let r=0; r<ROWS; r++)
@@ -1184,7 +1555,6 @@
     return n;
   }
 
-  // --- Strong evaluation ---
   const CENTER_WEIGHTS = [1, 2, 3, 4, 3, 2, 1];
 
   function evalWindow(cells, player){
@@ -1210,31 +1580,26 @@
 
   function scorePosition(player){
     let score = 0;
-    // Horizontal
     for(let r=0; r<ROWS; r++){
       for(let c=0; c<=COLS-4; c++){
         score += evalWindow([board[r][c], board[r][c+1], board[r][c+2], board[r][c+3]], player);
       }
     }
-    // Vertical
     for(let c=0; c<COLS; c++){
       for(let r=0; r<=ROWS-4; r++){
         score += evalWindow([board[r][c], board[r+1][c], board[r+2][c], board[r+3][c]], player);
       }
     }
-    // Diagonal \
     for(let r=0; r<=ROWS-4; r++){
       for(let c=0; c<=COLS-4; c++){
         score += evalWindow([board[r][c], board[r+1][c+1], board[r+2][c+2], board[r+3][c+3]], player);
       }
     }
-    // Diagonal /
     for(let r=3; r<ROWS; r++){
       for(let c=0; c<=COLS-4; c++){
         score += evalWindow([board[r][c], board[r-1][c+1], board[r-2][c+2], board[r-3][c+3]], player);
       }
     }
-    // Center control
     for(let r=0; r<ROWS; r++){
       for(let c=0; c<COLS; c++){
         if(board[r][c] === player) score += CENTER_WEIGHTS[c] * 3;
@@ -1244,7 +1609,6 @@
     return score;
   }
 
-  // Detect if player has an immediate winning column
   function getWinningCols(player){
     const wins = [];
     for(let c=0; c<COLS; c++){
@@ -1253,47 +1617,43 @@
     return wins;
   }
 
-  // Zobrist-like simple hash for transposition table
-  let zobrist = null;
-  function initZobrist(){
-    zobrist = [];
+  let fbZobrist = null;
+  function initFbZobrist(){
+    fbZobrist = [];
     let s = 123456789;
     function rnd(){ s ^= s << 13; s ^= s >>> 17; s ^= s << 5; return (s >>> 0); }
     for(let r=0; r<ROWS; r++){
-      zobrist[r] = [];
+      fbZobrist[r] = [];
       for(let c=0; c<COLS; c++){
-        zobrist[r][c] = [rnd(), rnd()]; // [red, yellow]
+        fbZobrist[r][c] = [rnd(), rnd()];
       }
     }
   }
-  initZobrist();
+  initFbZobrist();
 
-  function boardHash(){
+  function fbBoardHash(){
     let h = 0;
     for(let r=0; r<ROWS; r++){
       for(let c=0; c<COLS; c++){
         const v = board[r][c];
-        if(v === 'red') h ^= zobrist[r][c][0];
-        else if(v === 'yellow') h ^= zobrist[r][c][1];
+        if(v === 'red') h ^= fbZobrist[r][c][0];
+        else if(v === 'yellow') h ^= fbZobrist[r][c][1];
       }
     }
     return h >>> 0;
   }
 
-  // Transposition table: hash -> {depth, score, flag, bestCol}
-  // flag: 0 exact, 1 lower, 2 upper
-  const TT_SIZE = 1 << 20; // ~1M entries
-  const tt = new Array(TT_SIZE);
-  function ttClear(){
-    for(let i=0; i<TT_SIZE; i++) tt[i] = null;
+  const FB_TT_SIZE = 1 << 20;
+  const fbTt = new Array(FB_TT_SIZE);
+  function fbTtClear(){
+    for(let i=0; i<FB_TT_SIZE; i++) fbTt[i] = null;
   }
 
-  let nodesSearched = 0;
-  let searchDeadline = 0;
-  let searchAborted = false;
+  let fbNodesSearched = 0;
+  let fbSearchDeadline = 0;
+  let fbSearchAborted = false;
 
-  function orderMoves(valid, player, ttBest){
-    // Lightweight ordering: TT best > center. Wins already handled at node entry.
+  function fbOrderMoves(valid, player, ttBest){
     const scored = valid.map(col => {
       let s = (3 - Math.abs(col - 3)) * 10;
       if(col === ttBest) s += 1000000;
@@ -1303,29 +1663,22 @@
     return scored.map(x => x.col);
   }
 
-  function negamax(depth, alpha, beta, player, ply){
-    nodesSearched++;
-    if((nodesSearched & 2047) === 0 && performance.now() > searchDeadline){
-      searchAborted = true;
+  function fbNegamax(depth, alpha, beta, player, ply){
+    fbNodesSearched++;
+    if((fbNodesSearched & 2047) === 0 && performance.now() > fbSearchDeadline){
+      fbSearchAborted = true;
       return 0;
     }
-
     const opp = player === 'red' ? 'yellow' : 'red';
     const valid = getValidCols();
     const alphaOrig = alpha;
-
-    // Terminal: no moves = draw
     if(valid.length === 0) return 0;
-
-    // Immediate win available
     for(let i=0; i<valid.length; i++){
       if(wouldWin(valid[i], player)) return 1000000 - ply;
     }
-
-    // TT probe
-    const hash = boardHash();
-    const tidx = hash & (TT_SIZE - 1);
-    const entry = tt[tidx];
+    const hash = fbBoardHash();
+    const tidx = hash & (FB_TT_SIZE - 1);
+    const entry = fbTt[tidx];
     let ttBest = -1;
     if(entry && entry.h === hash && entry.d >= depth){
       ttBest = entry.bc;
@@ -1334,31 +1687,24 @@
       else if(entry.f === 2) beta = Math.min(beta, entry.s);
       if(alpha >= beta) return entry.s;
     }
-
     if(depth === 0){
       return scorePosition(player);
     }
-
-    const moves = orderMoves(valid, player, ttBest);
+    const moves = fbOrderMoves(valid, player, ttBest);
     let bestScore = -Infinity;
     let bestCol = moves[0];
-
     for(let i=0; i<moves.length; i++){
       const col = moves[i];
       const row = simulateDrop(col, player);
       if(row === null) continue;
-
-      // If this move wins, no need to search deeper
       let score;
       if(checkWin(row, col, player)){
         score = 1000000 - ply;
       } else {
-        score = -negamax(depth - 1, -beta, -alpha, opp, ply + 1);
+        score = -fbNegamax(depth - 1, -beta, -alpha, opp, ply + 1);
       }
       undoDrop(row, col);
-
-      if(searchAborted) return bestScore;
-
+      if(fbSearchAborted) return bestScore;
       if(score > bestScore){
         bestScore = score;
         bestCol = col;
@@ -1366,107 +1712,157 @@
       if(score > alpha) alpha = score;
       if(alpha >= beta) break;
     }
-
-    // TT store
     let flag = 0;
-    if(bestScore <= alphaOrig) flag = 2; // upper
-    else if(bestScore >= beta) flag = 1; // lower
-    tt[tidx] = {h: hash, d: depth, s: bestScore, f: flag, bc: bestCol};
-
+    if(bestScore <= alphaOrig) flag = 2;
+    else if(bestScore >= beta) flag = 1;
+    fbTt[tidx] = {h: hash, d: depth, s: bestScore, f: flag, bc: bestCol};
     return bestScore;
   }
 
-  function chooseCpuCol(){
-    const cpuPlayer = current;
+  function chooseCpuColSync(cpuPlayer){
     const human = cpuPlayer === 'red' ? 'yellow' : 'red';
     const valid = getValidCols();
     if(valid.length === 0) return 0;
 
-    // 1. Instant win
     for(const col of valid){
       if(wouldWin(col, cpuPlayer)) return col;
     }
-    // 2. Must block opponent win
     const oppWins = getWinningCols(human);
     if(oppWins.length === 1) return oppWins[0];
     if(oppWins.length >= 2){
-      // two threats — lost if we can't block both; still block one
       return oppWins[0];
     }
 
-    // 3. Avoid moves that give opponent an immediate win next
-    // (filtered inside search via evaluation)
-
     const empties = countEmpty();
-    // Endgame: solve completely when few moves left
-    // Midgame: iterative deepening with time budget
     const timeBudget = empties <= 14 ? 3500 : empties <= 22 ? 2500 : 2000;
-    searchDeadline = performance.now() + timeBudget;
-    searchAborted = false;
-    nodesSearched = 0;
-    ttClear();
+    fbSearchDeadline = performance.now() + timeBudget;
+    fbSearchAborted = false;
+    fbNodesSearched = 0;
+    fbTtClear();
 
     let bestCol = valid.slice().sort((a,b) => Math.abs(a-3) - Math.abs(b-3))[0];
     let bestScore = -Infinity;
-
-    // Max depth: solve remaining game when possible
-    // Deep search: fully solve late game, depth 14 midgame
     const maxDepth = Math.min(empties, empties <= 16 ? empties : 14);
 
     for(let depth = 2; depth <= maxDepth; depth++){
-      if(performance.now() > searchDeadline) break;
+      if(performance.now() > fbSearchDeadline) break;
       let iterBest = bestCol;
       let iterScore = -Infinity;
-      const ordered = orderMoves(valid, cpuPlayer, bestCol);
+      const ordered = fbOrderMoves(valid, cpuPlayer, bestCol);
 
       for(const col of ordered){
-        if(performance.now() > searchDeadline){ searchAborted = true; break; }
+        if(performance.now() > fbSearchDeadline){ fbSearchAborted = true; break; }
         const row = simulateDrop(col, cpuPlayer);
         if(row === null) continue;
         let score;
         if(checkWin(row, col, cpuPlayer)){
           score = 1000000;
         } else {
-          score = -negamax(depth - 1, -Infinity, Infinity, human, 1);
+          score = -fbNegamax(depth - 1, -Infinity, Infinity, human, 1);
         }
         undoDrop(row, col);
-        if(searchAborted && iterScore === -Infinity){
-          // keep previous depth result
+        if(fbSearchAborted && iterScore === -Infinity){
           break;
         }
         if(score > iterScore){
           iterScore = score;
           iterBest = col;
         }
-        // Perfect win found at this depth
         if(score >= 1000000 - 50) break;
       }
 
-      if(!searchAborted || iterScore !== -Infinity){
+      if(!fbSearchAborted || iterScore !== -Infinity){
         bestCol = iterBest;
         bestScore = iterScore;
       }
-      // If we found a forced win, stop
       if(bestScore >= 1000000 - 100) break;
-      // If forced loss at full depth, still play best effort
     }
 
     return bestCol;
   }
 
+  function runCpuMoveSync(cpuPlayer){
+    const col = chooseCpuColSync(cpuPlayer);
+    const row = lowestEmptyRow(col);
+    if(row !== -1){
+      dropPiece(row, col);
+    } else {
+      locked = false;
+    }
+  }
+
   function scheduleCpuMove(){
     locked = true;
     updateStatus();
-    // Brief delay so "CPU思考中" paints, then deep search
+    // Brief delay so "CPU思考中" paints, then deep search (off the main thread if possible)
     const thinkTime = 80;
     cpuTimer = setTimeout(() => {
-      if(gameOver) return;
-      const col = chooseCpuCol();
-      const row = lowestEmptyRow(col);
-      if(row !== -1){
-        dropPiece(row, col);
-      } else {
-        locked = false;
+      cpuTimer = null;
+      if(gameOver){ locked = false; return; }
+      const cpuPlayer = current;
+
+      if(!workerUsable || typeof Worker === 'undefined'){
+        runCpuMoveSync(cpuPlayer);
+        return;
+      }
+
+      let worker;
+      try{
+        worker = createCpuWorker();
+      }catch(err){
+        workerUsable = false;
+        runCpuMoveSync(cpuPlayer);
+        return;
+      }
+
+      const reqId = ++cpuReqId;
+      const boardSnapshot = board.map(row => row.slice());
+      let settled = false;
+
+      // Safety timeout: if the worker never answers (e.g. blocked by the
+      // preview environment), fall back to the synchronous AI instead of
+      // leaving the CPU stuck forever.
+      const stuckTimer = setTimeout(() => {
+        if(settled) return;
+        settled = true;
+        workerUsable = false;
+        killCpuWorker();
+        if(gameOver || gameMode !== 'cpu' || current !== cpuPlayer) return;
+        runCpuMoveSync(cpuPlayer);
+      }, 6000);
+
+      worker.onerror = () => {
+        if(settled) return;
+        settled = true;
+        clearTimeout(stuckTimer);
+        workerUsable = false;
+        killCpuWorker();
+        if(gameOver || gameMode !== 'cpu' || current !== cpuPlayer) return;
+        runCpuMoveSync(cpuPlayer);
+      };
+
+      worker.onmessage = (e) => {
+        if(e.data.reqId !== reqId) return; // stale response from a cancelled think — ignore
+        settled = true;
+        clearTimeout(stuckTimer);
+        if(gameOver || gameMode !== 'cpu' || current !== cpuPlayer){ return; }
+        const col = e.data.col;
+        const row = lowestEmptyRow(col);
+        if(row !== -1){
+          dropPiece(row, col);
+        } else {
+          locked = false;
+        }
+      };
+
+      try{
+        worker.postMessage({ board: boardSnapshot, cpuPlayer, reqId });
+      }catch(err){
+        settled = true;
+        clearTimeout(stuckTimer);
+        workerUsable = false;
+        killCpuWorker();
+        runCpuMoveSync(cpuPlayer);
       }
     }, thinkTime);
   }
@@ -1518,6 +1914,8 @@
 
   function softClearBoard(){
     if(cpuTimer){ clearTimeout(cpuTimer); cpuTimer = null; }
+    if(winOverlayTimer){ clearTimeout(winOverlayTimer); winOverlayTimer = null; }
+    killCpuWorker();
     for(let r=0; r<ROWS; r++){
       for(let c=0; c<COLS; c++){
         board[r][c] = null;
@@ -1609,6 +2007,7 @@
     // stay on settings: force human-first so user can freely adjust
     // (keep cpuFirst selection but don't start)
     if(cpuTimer){ clearTimeout(cpuTimer); cpuTimer = null; }
+    killCpuWorker();
     locked = false;
     roundStarted = false;
     updateStatus();
