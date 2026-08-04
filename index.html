@@ -1781,8 +1781,27 @@ self.onmessage = function(e){
     return bestCol;
   }
 
+  // Final safety net: re-check the chosen column against the ACTUAL live
+  // board right before it's applied. If a mandatory win/block was somehow
+  // missed (stale snapshot, timing edge case, etc.) this corrects it.
+  function pickSafeColumn(proposedCol, cpuPlayer){
+    const human = cpuPlayer === 'red' ? 'yellow' : 'red';
+    const valid = getValidCols();
+    if(valid.length === 0) return proposedCol;
+    let col = valid.indexOf(proposedCol) !== -1 ? proposedCol : valid[0];
+
+    for(const c of valid){
+      if(wouldWin(c, cpuPlayer)) return c;
+    }
+    const humanWins = valid.filter(c => wouldWin(c, human));
+    if(humanWins.length > 0 && humanWins.indexOf(col) === -1){
+      return humanWins[0];
+    }
+    return col;
+  }
+
   function runCpuMoveSync(cpuPlayer){
-    const col = chooseCpuColSync(cpuPlayer);
+    const col = pickSafeColumn(chooseCpuColSync(cpuPlayer), cpuPlayer);
     const row = lowestEmptyRow(col);
     if(row !== -1){
       dropPiece(row, col);
@@ -1821,7 +1840,9 @@ self.onmessage = function(e){
 
       // Safety timeout: if the worker never answers (e.g. blocked by the
       // preview environment), fall back to the synchronous AI instead of
-      // leaving the CPU stuck forever.
+      // leaving the CPU stuck forever. Kept comfortably above the worker's
+      // own max thinking budget (9s) so a legitimately long search doesn't
+      // get mistaken for a stuck/blocked worker.
       const stuckTimer = setTimeout(() => {
         if(settled) return;
         settled = true;
@@ -1829,7 +1850,7 @@ self.onmessage = function(e){
         killCpuWorker();
         if(gameOver || gameMode !== 'cpu' || current !== cpuPlayer) return;
         runCpuMoveSync(cpuPlayer);
-      }, 6000);
+      }, 13000);
 
       worker.onerror = () => {
         if(settled) return;
@@ -1846,7 +1867,7 @@ self.onmessage = function(e){
         settled = true;
         clearTimeout(stuckTimer);
         if(gameOver || gameMode !== 'cpu' || current !== cpuPlayer){ return; }
-        const col = e.data.col;
+        const col = pickSafeColumn(e.data.col, cpuPlayer);
         const row = lowestEmptyRow(col);
         if(row !== -1){
           dropPiece(row, col);
