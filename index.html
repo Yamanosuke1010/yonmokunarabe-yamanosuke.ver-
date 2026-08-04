@@ -990,6 +990,30 @@ function getValidCols(){
     return bestScore;
   }
 
+  // Does playing `cpuCol` hand the opponent a fork (2+ simultaneous winning
+  // replies) on their very next move? This is checked directly (not via the
+  // deep search), so it works even on slow devices where iterative
+  // deepening doesn't get far.
+  function wouldAllowFork(cpuCol, cpuPlayer){
+    const human = cpuPlayer === 'red' ? 'yellow' : 'red';
+    const row = simulateDrop(cpuCol, cpuPlayer);
+    if(row === null) return false;
+    let fork = false;
+    const humanValid = getValidCols();
+    for(const hc of humanValid){
+      const hrow = simulateDrop(hc, human);
+      if(hrow === null) continue;
+      if(!checkWin(hrow, hc, human)){
+        const followWins = getValidCols().filter(c2 => wouldWin(c2, human));
+        if(followWins.length >= 2) fork = true;
+      }
+      undoDrop(hrow, hc);
+      if(fork) break;
+    }
+    undoDrop(row, cpuCol);
+    return fork;
+  }
+
   function chooseCpuCol(cpuPlayer){
     const human = cpuPlayer === 'red' ? 'yellow' : 'red';
     const valid = getValidCols();
@@ -1007,8 +1031,10 @@ function getValidCols(){
       return oppWins[0];
     }
 
-    // 3. Avoid moves that give opponent an immediate win next
-    // (filtered inside search via evaluation)
+    // 3. Never hand the opponent a fork if a safer move exists — checked
+    // directly so it doesn't depend on search depth/hardware speed.
+    const safeCols = valid.filter(col => !wouldAllowFork(col, cpuPlayer));
+    const candidates = safeCols.length > 0 ? safeCols : valid;
 
     const empties = countEmpty();
     // Endgame: solve completely when few moves left
@@ -1023,7 +1049,7 @@ function getValidCols(){
     // It's reset naturally each round because a fresh worker (fresh TT) is
     // spun up whenever the board resets.
 
-    let bestCol = valid.slice().sort((a,b) => Math.abs(a-3) - Math.abs(b-3))[0];
+    let bestCol = candidates.slice().sort((a,b) => Math.abs(a-3) - Math.abs(b-3))[0];
     let bestScore = -Infinity;
 
     // Max depth: solve remaining game when possible
@@ -1034,7 +1060,7 @@ function getValidCols(){
       if(performance.now() > searchDeadline) break;
       let iterBest = bestCol;
       let iterScore = -Infinity;
-      const ordered = orderMoves(valid, cpuPlayer, bestCol);
+      const ordered = orderMoves(candidates, cpuPlayer, bestCol);
 
       for(const col of ordered){
         if(performance.now() > searchDeadline){ searchAborted = true; break; }
@@ -1719,6 +1745,26 @@ self.onmessage = function(e){
     return bestScore;
   }
 
+  function wouldAllowForkSync(cpuCol, cpuPlayer){
+    const human = cpuPlayer === 'red' ? 'yellow' : 'red';
+    const row = simulateDrop(cpuCol, cpuPlayer);
+    if(row === null) return false;
+    let fork = false;
+    const humanValid = getValidCols();
+    for(const hc of humanValid){
+      const hrow = simulateDrop(hc, human);
+      if(hrow === null) continue;
+      if(!checkWin(hrow, hc, human)){
+        const followWins = getValidCols().filter(c2 => wouldWin(c2, human));
+        if(followWins.length >= 2) fork = true;
+      }
+      undoDrop(hrow, hc);
+      if(fork) break;
+    }
+    undoDrop(row, cpuCol);
+    return fork;
+  }
+
   function chooseCpuColSync(cpuPlayer){
     const human = cpuPlayer === 'red' ? 'yellow' : 'red';
     const valid = getValidCols();
@@ -1733,6 +1779,9 @@ self.onmessage = function(e){
       return oppWins[0];
     }
 
+    const safeCols = valid.filter(col => !wouldAllowForkSync(col, cpuPlayer));
+    const candidates = safeCols.length > 0 ? safeCols : valid;
+
     const empties = countEmpty();
     const timeBudget = empties <= 14 ? 3500 : empties <= 22 ? 2500 : 2000;
     fbSearchDeadline = performance.now() + timeBudget;
@@ -1740,7 +1789,7 @@ self.onmessage = function(e){
     fbNodesSearched = 0;
     fbTtClear();
 
-    let bestCol = valid.slice().sort((a,b) => Math.abs(a-3) - Math.abs(b-3))[0];
+    let bestCol = candidates.slice().sort((a,b) => Math.abs(a-3) - Math.abs(b-3))[0];
     let bestScore = -Infinity;
     const maxDepth = Math.min(empties, empties <= 16 ? empties : 14);
 
@@ -1748,7 +1797,7 @@ self.onmessage = function(e){
       if(performance.now() > fbSearchDeadline) break;
       let iterBest = bestCol;
       let iterScore = -Infinity;
-      const ordered = fbOrderMoves(valid, cpuPlayer, bestCol);
+      const ordered = fbOrderMoves(candidates, cpuPlayer, bestCol);
 
       for(const col of ordered){
         if(performance.now() > fbSearchDeadline){ fbSearchAborted = true; break; }
